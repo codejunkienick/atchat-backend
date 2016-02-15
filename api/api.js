@@ -30,7 +30,7 @@ const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, f
 
 app.use(cookieParser());
 app.use(session({
-  secret: 'secret',
+  secret: config.secret,
   resave: false,
   saveUninitialized: false,
   store: sessionStore,

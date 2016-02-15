@@ -16,6 +16,7 @@ module.exports = Object.assign({
   apiPort: process.env.APIPORT || 3001,
   server: {
     databaseURL: 'mongodb://localhost/speedchat'
-  }
+  },
+  secret: 'superdupersecretkey' // change in production
 
 }, environment);

@@ -1,8 +1,8 @@
 import cookieParser from 'cookie-parser';
-
+import config from '../config';
 export function authenticateSocket(sessionStore) {
   return function _authenticateSocket(socket, next) {
-    cookieParser("secret")(socket.handshake, {}, function(err){
+    cookieParser(config.secret)(socket.handshake, {}, function(err){
       if (err) {
         console.log("error in parsing cookie");
         return next(err);
