@@ -1,0 +1,1 @@
+# Speedchat API. Documentation WIP

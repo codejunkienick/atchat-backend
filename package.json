@@ -1,0 +1,126 @@
+{
+  "name": "speedchat-api",
+  "description": "",
+  "author": "Poteryaev Nickita <poteryaevnick@gmail.com> (http://github.com/codejunkienick)",
+  "license": "",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "homepage": "",
+  "keywords": [],
+  "main": "bin/api.js",
+  "scripts": {
+    "start-prod-api": "better-npm-run start-prod-api",
+    "lint": "eslint -c .eslintrc src api",
+    "start-dev-api": "better-npm-run start-dev-api",
+    "test": "karma start",
+    "test-node": "./node_modules/mocha/bin/mocha $(find api -name '*-test.js') --compilers js:babel-core/register",
+    "test-node-watch": "./node_modules/mocha/bin/mocha $(find api -name '*-test.js') --compilers js:babel-core/register --watch"
+  },
+  "betterScripts": {
+    "start-prod-api": {
+      "command": "node ./bin/api.js",
+      "env": {
+        "NODE_PATH": "./api",
+        "NODE_ENV": "production",
+        "APIPORT": 3030
+      }
+    },
+    "start-dev-api": {
+      "command": "node ./bin/api.js",
+      "env": {
+        "NODE_PATH": "./api",
+        "NODE_ENV": "development",
+        "APIPORT": 3001
+      }
+    },
+    "start-dev-api-2": {
+      "command": "node ./bin/api.js",
+      "env": {
+        "NODE_PATH": "./api",
+        "NODE_ENV": "development",
+        "APIPORT": 3001
+      }
+    }
+  },
+  "dependencies": {
+    "babel": "^6.5.1",
+    "babel-core": "^6.0.0",
+    "babel-loader": "^6.0.0",
+    "babel-plugin-react-transform": "^2.0.0",
+    "babel-plugin-syntax-async-functions": "^6.5.0",
+    "babel-plugin-transform-regenerator": "^6.5.0",
+    "babel-plugin-typecheck": "^3.6.1",
+    "babel-polyfill": "^6.5.0",
+    "babel-preset-es2015": "^6.5.0",
+    "babel-preset-react": "^6.5.0",
+    "babel-preset-stage-0": "^6.5.0",
+    "babel-preset-stage-3": "^6.5.0",
+    "babel-runtime": "^6.5.0",
+    "body-parser": "^1.14.1",
+    "compression": "^1.6.0",
+    "connect-mongo": "^1.1.0",
+    "cookie-parser": "^1.4.1",
+    "cron": "^1.1.0",
+    "express": "^4.13.3",
+    "express-session": "^1.12.1",
+    "file-loader": "^0.8.5",
+    "history": "1.17.0",
+    "http-proxy": "^1.12.0",
+    "immutable": "^3.7.6",
+    "invariant": "^2.2.0",
+    "less": "^2.5.3",
+    "less-loader": "^2.2.1",
+    "lodash": "^4.3.0",
+    "lru-memoize": "^1.0.0",
+    "map-props": "^1.0.0",
+    "mongoose": "^4.4.3",
+    "morgan": "^1.6.1",
+    "multireducer": "^1.0.2",
+    "passport": "^0.3.2",
+    "passport-local": "^1.0.0",
+    "passport-local-mongoose": "^4.0.0",
+    "piping": "^0.3.0",
+    "pretty-error": "^1.2.0",
+    "query-string": "^3.0.0",
+    "serialize-javascript": "^1.1.2",
+    "socket.io": "^1.3.7",
+    "socket.io-client": "^1.3.7",
+    "superagent": "^1.4.0",
+    "url-loader": "^0.5.7",
+    "warning": "^2.1.0",
+    "webpack-isomorphic-tools": "^2.2.18"
+  },
+  "devDependencies": {
+    "autoprefixer-loader": "^3.1.0",
+    "babel-cli": "^6.5.1",
+    "babel-eslint": "^4.1.3",
+    "babel-plugin-react-transform": "~2.0.0",
+    "better-npm-run": "^0.0.4",
+    "chai": "^3.3.0",
+    "clean-webpack-plugin": "^0.1.6",
+    "concurrently": "^0.1.1",
+    "css-loader": "^0.23.1",
+    "eslint": "1.10.3",
+    "eslint-config-airbnb": "0.1.0",
+    "eslint-loader": "^1.0.0",
+    "eslint-plugin-import": "^0.8.0",
+    "eslint-plugin-react": "^3.5.0",
+    "json-loader": "^0.5.4",
+    "karma": "^0.13.10",
+    "karma-cli": "^0.1.1",
+    "karma-mocha": "^0.2.0",
+    "karma-mocha-reporter": "^1.1.1",
+    "karma-phantomjs-launcher": "^0.2.1",
+    "karma-sourcemap-loader": "^0.3.5",
+    "karma-webpack": "^1.7.0",
+    "mocha": "^2.3.3",
+    "phantomjs": "^1.9.18",
+    "phantomjs-polyfill": "0.0.1"
+  },
+  "engines": {
+    "node": "4.1.1"
+  }
+}
