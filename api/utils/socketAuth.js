@@ -11,6 +11,7 @@ export function authenticateSocket(sessionStore) {
         console.log("no secureCookies|signedCookies found");
         return next(new Error("no secureCookies found"));
       }
+      //console.log(socket.handshake);
       sessionStore.get(socket.handshake.signedCookies["usersid"], function(err, session){
         socket.session = session;
         if (!err && !session) err = new Error('session not found');
