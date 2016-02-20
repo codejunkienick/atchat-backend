@@ -13,7 +13,7 @@ import routes from './routes/index';
 import logger from 'morgan';
 import {CronJob} from 'cron';
 import _ from 'lodash';
-import {authenticateSocket} from 'utils/socketAuth';
+import {authenticateSocket} from 'actions/socketAuth';
 const Immutable = require('immutable');
 
 const app = express();
@@ -22,7 +22,7 @@ const server = new http.Server(app);
 const io = new SocketIo(server);
 
 mongoose.connect(config.server.databaseURL);
-const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, function(err){
+export const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, function(err){
   console.log(err || 'connect-mongodb setup ok');
 });
 
@@ -45,30 +45,7 @@ passport.use(Account.createStrategy());
 passport.serializeUser(Account.serializeUser());
 passport.deserializeUser(Account.deserializeUser());
 
-app.use('/', routes);
-
-app.get('/loginToken',
-  function(req, res) {
-    console.log(req.signedCookies);
-    if (!req.signedCookies) {
-      return res.status(400).send("No secureCookies found");
-    }
-    sessionStore.get(req.signedCookies.usersid, async function(err, session){
-      if (!err && !session) err = new Error('session not found');
-      if (err) {
-        console.log('failed connection to socket.io:', err);1
-      } else {
-        try {
-          let user = await Account.findOne({username: session.passport.user});
-          req.user = user;
-          res.status(200).json(user);
-        } catch (err) {
-          console.log(err);
-        }
-      }
-    });
-  }
-);
+app.use('/user/', routes);
 
 const bufferSize = 100;
 const messageBuffer = new Array(bufferSize);
@@ -169,6 +146,7 @@ if (config.apiPort) {
   async function handleUserSocket(socket) {
     try {
       const user = await getUser(socket.session.passport.user);
+
       socket.on('findBuddy', (data) => {
         console.log("[SOCKET] User " + user.username + " started searching");
         if (usersSearchingSet.has(socket)) {
@@ -184,14 +162,17 @@ if (config.apiPort) {
         console.log('[SOCKET] User ' + user.username + ' sends message to User ' + data.username);
         let receiver = connectionMap.get(user.username);
         receiver.emit("newMessage", data.message);
-      })
+      });
+      socket.on('disconnect', () => {
+        console.log('[SOCKET] ' + user.username + ' disconnected from ws');
+        socket.disconnect();
+      });
     } catch (err) {
       console.log(err);
     }
   }
 
   io.on('connection', function (socket) {
-
     const session = socket.session;
     if (!session) return disconnectSocket(socket, 'no session in socket - internal bug');
 
@@ -204,3 +185,4 @@ if (config.apiPort) {
 } else {
   console.error('==>     ERROR: No PORT environment variable has been specified');
 }
+

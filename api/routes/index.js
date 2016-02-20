@@ -1,7 +1,8 @@
 import Account from '../models/user';
 import express from 'express';
 import passport from 'passport';
-
+import {sessionStore} from '../api';
+import authenticateCookie from '../actions/cookieAuth';
 const router = express.Router();
 const regUsername = /^[a-z0-9_-]{3,16}$/;
 
@@ -38,5 +39,12 @@ router.post('/signin',
       res.status(200).send({user: req.user});
     });
   });
+
+router.get('/loginToken', authenticateCookie);
+
+router.get('/logout', function (req, res) {
+  req.logout();
+  res.status(200).send('logged out');
+});
 
 export default router;
