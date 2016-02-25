@@ -26,6 +26,7 @@ export const sessionStore = new MongoStore({mongooseConnection: mongoose.connect
   console.log(err || 'connect-mongodb setup ok');
 });
 
+app.use(cookieParser(config.secret));
 app.use(session({
   secret: config.secret,
   resave: false,
@@ -34,7 +35,6 @@ app.use(session({
   key: 'usersid',
   cookie: {maxAge: 1200000}
 }));
-app.use(cookieParser(config.secret));
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }) );
@@ -44,6 +44,14 @@ app.use(passport.session());
 passport.use(Account.createStrategy());
 passport.serializeUser(Account.serializeUser());
 passport.deserializeUser(Account.deserializeUser());
+
+app.use( (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, X-AUTHENTICATION, X-IP, Content-Type, Accept');
+  res.header('Access-Control-Allow-Credentials', true);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  next();
+});
 
 app.use('/user/', routes);
 
@@ -85,7 +93,7 @@ if (config.apiPort) {
         return;
       }
       const syncTime = Date.now();
-      let endTime = new Date(new Date().getTime() + config.chatDuration);
+      const endTime = new Date(new Date().getTime() + config.chatDuration).getTime();
       const dataForFirst = {
         displayName: userSecond.displayName,
         username: userSecond.username,
@@ -112,13 +120,17 @@ if (config.apiPort) {
     connectionInProgress = false;
   }, null, false);
 
-  const disconnectUsers = new CronJob('*/10 * * * * *', function() {
-    if (!currentChats.first() || disconnectInProgress) return;
+  const disconnectUsers = new CronJob('* * * * * *', function() {
+    if (!currentChats.first() || currentChats.first() == undefined || disconnectInProgress) return;
     disconnectInProgress = true;
-    while (currentChats.first().endTime.getTime() - new Date().getTime() < 0) {
+    while (true) {
       let lastTalk = currentChats.first();
-      console.log('[CRON] removing last talk');
-      console.log(lastTalk);
+      if (!lastTalk || lastTalk.endTime - new Date().getTime() > 0) {
+        break;
+      }
+      console.log(lastTalk.endTime - new Date().getTime());
+      console.log('[CRON] removing last talk ');
+      console.log('between ' + lastTalk.user1.session.passport.user + " and " + lastTalk.user2.session.passport.user);
       lastTalk.user1.emit('stopTalk');
       lastTalk.user2.emit('stopTalk');
       connectionMap.delete(lastTalk.user1.session.passport.user);
@@ -163,7 +175,7 @@ if (config.apiPort) {
         let receiver = connectionMap.get(user.username);
         receiver.emit("newMessage", data.message);
       });
-      socket.on('disconnect', () => {
+      socket.on('1', () => {
         console.log('[SOCKET] ' + user.username + ' disconnected from ws');
         socket.disconnect();
       });

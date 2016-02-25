@@ -13,7 +13,7 @@ router.post('/signup', function(req, res) {
     username: req.body.username,
     password: req.body.password,
   };
-  if (!regUsername.match(user.username)) {
+  if (!user.username.match(regUsername)) {
     return res.status(400).send("Invalid username");
   }
   Account.register(new Account({ username : user.username, displayName: user.displayName }), user.password, function(err, account) {
@@ -22,29 +22,40 @@ router.post('/signup', function(req, res) {
     } else {
       passport.authenticate('local', function (err, account) {
         req.logIn(account, function() {
-          res.status(err ? 500 : 200).send(err ? err : {user: account});
+        res.status(err ? 500 : 200).send(err ? err : {user: account});
         });
       })(req, res);
     }
   });
 });
 
-router.post('/signin',
-  passport.authenticate('local'),
-  function(req, res) {
-    req.session.save(function (err) {
-      if (err) {
-        return next(err);
+router.post('/login',
+  function (req, res, next) {
+    passport.authenticate('local', function(err, user, info) {
+      if (err) { return res.status(401).send(err); }
+      if (!user) {
+        console.log(info);
+        return res.status(401).json(info);
       }
-      res.status(200).send({user: req.user});
-    });
+      req.logIn(user, function(err) {
+        if (err) { return res.status(401).send(err); }
+
+        req.session.save(function (err) {
+          if (err) {
+            console.log(err);
+            return res.status(401).send(err);
+          }
+          res.status(200).json(user);
+        });
+      });
+    })(req, res, next)
   });
 
 router.get('/loginToken', authenticateCookie);
 
 router.get('/logout', function (req, res) {
   req.logout();
-  res.status(200).send('logged out');
+  res.status(200).json({status: 'Successful logout'});
 });
 
 export default router;

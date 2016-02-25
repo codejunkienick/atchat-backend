@@ -6,7 +6,7 @@ export default function authenticateCookie(req, res) {
       return res.status(400).send("No secureCookies found");
     }
     sessionStore.get(req.signedCookies.usersid, async function(err, session){
-      if (!err && !session) err = new Error('session not found');
+      if ((!err && !session) || !session.passport) err = new Error('session not found');
       if (err) {
         res.status(401).send(err);
       } else {
