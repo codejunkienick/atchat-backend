@@ -14,12 +14,22 @@ import logger from 'morgan';
 import {CronJob} from 'cron';
 import _ from 'lodash';
 import {authenticateSocket} from 'actions/socketAuth';
+import {Strategy as JwtStrategy, ExtractJwt} from 'passport-jwt';
+
 const Immutable = require('immutable');
 
 const app = express();
 const MongoStore = require('connect-mongo')(session);
 const server = new http.Server(app);
 const io = new SocketIo(server);
+_.each(io.nsps, function(nsp){
+  nsp.on('connect', function(socket){
+    if (!socket.auth) {
+      console.log("removing socket from", nsp.name);
+      delete nsp.connected[socket.id];
+    }
+  });
+});
 
 mongoose.connect(config.server.databaseURL);
 export const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, function(err){
@@ -42,8 +52,26 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 passport.use(Account.createStrategy());
+const opts = {
+  jwtFromRequest: ExtractJwt.fromAuthHeader(),
+  secretOrKey: config.secret
+};
+passport.use(new JwtStrategy(opts, function(jwt_payload, done) {
+  Account.findOne({username: jwt_payload.username}, function (err, user) {
+    if (err) {
+      return done(err, false);
+    }
+    if (user) {
+      done(null, user);
+    } else {
+      done(null, false);
+    }
+  });
+}));
 passport.serializeUser(Account.serializeUser());
 passport.deserializeUser(Account.deserializeUser());
+
+
 
 app.use( (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -69,7 +97,7 @@ if (config.apiPort) {
   });
 
   io.listen(runnable);
-  io.use(authenticateSocket(sessionStore));
+//  io.use(authenticateSocket(sessionStore));
 
   //
   let usersSearchingIds = Immutable.Set();
@@ -225,8 +253,9 @@ if (config.apiPort) {
     socket.disconnect();
   }
   async function handleUserSocket(socket) {
+    if (!socket.auth) return;
     try {
-      const user = await getUser(socket.session.passport.user);
+      const user = socket.user;
 
       socket.on('findBuddy', (data) => {
         console.log("[SOCKET] User " + user.username + " started searching");
@@ -268,14 +297,36 @@ if (config.apiPort) {
   }
 
   io.on('connection', function (socket) {
-    const session = socket.session;
-    if (!session) return disconnectSocket(socket, 'no session in socket - internal bug');
+    socket.on('authenticate', function(data){
+      //check the auth data sent by the client
+      console.log(data);
+      authenticateSocket(data.token, function(err, user){
+        if (!err && user){
+          console.log("Authenticated socket ", socket.id);
+          socket.auth = true;
+          socket.user = user;
+          _.each(io.nsps, function(nsp) {
+            if(_.find(nsp.sockets, {id: socket.id})) {
+              console.log("restoring socket to", nsp.name);
+              nsp.connected[socket.id] = socket;
+              
+              socket.emit('authenticated');
+              handleUserSocket(socket);
+            }
+          });
+        } else {
+          console.log(err);
+        }
+      });
+    });
 
-    const userId = session.passport.user;
-    if (!userId) return disconnectSocket(socket, "no authenticated user in socket's session");
-
-    console.log("USER: '" + userId + "' connected to ws");
-    handleUserSocket(socket);
+    setTimeout(function(){
+      //If the socket didn't authenticate, disconnect it
+      if (!socket.auth) {
+        console.log("Disconnecting socket ", socket.id);
+        socket.disconnect('unauthorized');
+      }
+    }, 1000);
   });
 } else {
   console.error('==>     ERROR: No PORT environment variable has been specified');

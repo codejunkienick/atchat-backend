@@ -5,6 +5,8 @@ import {sessionStore} from '../api';
 import authenticateCookie from '../actions/cookieAuth';
 const router = express.Router();
 const regUsername = /^[a-z0-9_-]{3,16}$/;
+import jwt from 'jsonwebtoken';
+import config from '../config';
 
 router.post('/signup', function(req, res) {
   console.log(req.body);
@@ -32,26 +34,34 @@ router.post('/signup', function(req, res) {
 router.post('/login',
   function (req, res, next) {
     passport.authenticate('local', function(err, user, info) {
+
       if (err) { return res.status(401).send(err); }
       if (!user) {
         console.log(info);
         return res.status(401).json(info);
       }
       req.logIn(user, function(err) {
-        if (err) { return res.status(401).send(err); }
-
+        if (err) {
+          return res.status(401).send(err);
+        }
+        const token = jwt.sign({ username: user.username}, config.secret);
         req.session.save(function (err) {
           if (err) {
             console.log(err);
             return res.status(401).send(err);
           }
-          res.status(200).json(user);
+          res.status(200).json({
+            user,
+            token
+          });
         });
       });
     })(req, res, next)
   });
 
-router.get('/loginToken', authenticateCookie);
+router.get('/loginCookie', authenticateCookie);
+
+//router.get('/loginToken', authenticateToken);
 
 router.get('/logout', function (req, res) {
   req.logout();

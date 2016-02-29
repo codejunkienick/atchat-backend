@@ -2,7 +2,8 @@
   "plugins": [
   "syntax-async-functions",
   "transform-regenerator",
-  "typecheck"
+  "typecheck",
+    "lodash"
   ],
   "presets": ["es2015", "stage-0"]
 }
