@@ -71,17 +71,29 @@ if (config.apiPort) {
   io.listen(runnable);
   io.use(authenticateSocket(sessionStore));
 
+  //
+  let usersSearchingIds = Immutable.Set();
   let usersSearchingSet = Immutable.Set();
+
+  // Stack of current chats and exchanges to process in Cron Job
   let currentChats = Immutable.Stack();
+  let exchangeChats = Immutable.Stack();
+
+  // Map username of one user to the socket of the other
   let connectionMap = new Map();
+  let exchangeMap = new Map();
+
+  // Cron locks
   let connectionInProgress = false;
   let disconnectInProgress = false;
+  let endExchageInProgress = false;
 
-  const connectUsers = new CronJob('* * * * * *', async function() {
+  const connectUsersJob = new CronJob('* * * * * *', async function() {
     if (connectionInProgress || usersSearchingSet.size < 2) return;
     connectionInProgress = true;
     let usersSearching = usersSearchingSet.toArray();
     usersSearching = _.shuffle(usersSearching);
+
     while (usersSearching.length >= 2) {
       const socketFirst = usersSearching.pop();
       const socketSecond = usersSearching.pop();
@@ -95,13 +107,17 @@ if (config.apiPort) {
       const syncTime = Date.now();
       const endTime = new Date(new Date().getTime() + config.chatDuration).getTime();
       const dataForFirst = {
-        displayName: userSecond.displayName,
-        username: userSecond.username,
+        receiver: {
+          displayName: userSecond.displayName,
+          username: userSecond.username,
+        },
         time: syncTime
       };
       const dataForSecond = {
-        displayName: userFirst.displayName,
-        username: userFirst.username,
+        receiver: {
+          displayName: userFirst.displayName,
+          username: userFirst.username,
+        },
         time: syncTime
       };
       const talk = {
@@ -113,35 +129,88 @@ if (config.apiPort) {
       connectionMap.set(userFirst.username, socketSecond);
       connectionMap.set(userSecond.username, socketFirst);
       console.log('[SOCKET] ' + userFirst.username + ' connected to ' + userSecond.username);
-      socketFirst.emit('foundBuddy', dataForFirst);
-      socketSecond.emit('foundBuddy', dataForSecond);
+      socketFirst.emit('startChat', dataForFirst);
+      socketSecond.emit('startChat', dataForSecond);
     }
     usersSearchingSet = Immutable.Set(usersSearching);
     connectionInProgress = false;
   }, null, false);
 
-  const disconnectUsers = new CronJob('* * * * * *', function() {
+  const disconnectUsersJob = new CronJob('* * * * * *', function() {
     if (!currentChats.first() || currentChats.first() == undefined || disconnectInProgress) return;
     disconnectInProgress = true;
     while (true) {
-      let lastTalk = currentChats.first();
+      const lastTalk = currentChats.first();
       if (!lastTalk || lastTalk.endTime - new Date().getTime() > 0) {
         break;
       }
+
+      const username1 = lastTalk.user1.session.passport.user;
+      const username2 = lastTalk.user2.session.passport.user;
+      if (!connectionMap.has(username1) || !connectionMap.has(username2)) {
+        //This means talk was aborted and we no longer need to process it
+        currentChats = currentChats.pop();
+        continue;
+      }
       console.log(lastTalk.endTime - new Date().getTime());
       console.log('[CRON] removing last talk ');
-      console.log('between ' + lastTalk.user1.session.passport.user + " and " + lastTalk.user2.session.passport.user);
+      console.log('between ' + username1 + " and " + username2);
       lastTalk.user1.emit('stopTalk');
       lastTalk.user2.emit('stopTalk');
-      connectionMap.delete(lastTalk.user1.session.passport.user);
-      connectionMap.delete(lastTalk.user2.session.passport.user);
+      const exchangeTime = new Date(new Date().getTime() + config.exchangeDuration).getTime();
+      const exchageTalk = {
+        exchangeTime: exchangeTime,
+        user1: lastTalk.user1,
+        user2: lastTalk.user2,
+      };
+      exchangeChats.push(exchageTalk);
+      exchangeMap.set(username1, lastTalk.user2);
+      exchangeMap.set(username2, lastTalk.user1);
+
+      connectionMap.delete(username1);
+      connectionMap.delete(username2);
       currentChats = currentChats.pop();
+
     }
     disconnectInProgress = false;
   }, null, false);
 
-  connectUsers.start();
-  disconnectUsers.start();
+  const endExchageJob = new CronJob('* * * * * *', function() {
+    if (!exchangeChats.first() || exchangeChats.first() == undefined || disconnectInProgress) return;
+    endExchageInProgress = true;
+    while (true) {
+      const lastTalk = exchangeChats.first();
+      if (!lastTalk || lastTalk.exchangeTime - new Date().getTime() > 0) {
+        break;
+      }
+
+      const username1 = lastTalk.user1.session.passport.user;
+      const username2 = lastTalk.user2.session.passport.user;
+      if (!exchangeMap.has(username1) || !exchangeMap.has(username2)) {
+        //This means talk was aborted and we no longer need to process it
+        exchangeChats = exchangeChats.pop();
+        continue;
+      }
+      console.log(lastTalk.endTime - new Date().getTime());
+      lastTalk.user1.emit('stopExchange');
+      lastTalk.user2.emit('stopExchange');
+      exchangeChats.pop();
+
+    }
+    endExchageInProgress = false;
+  }, null, false);
+
+  connectUsersJob.start();
+  disconnectUsersJob.start();
+
+  function abortTalk(userSocket, receiverSocket) {
+    receiverSocket.emit('abortTalk');
+    connectionMap.delete(userSocket.session.passport.user);
+    connectionMap.delete(receiverSocket.session.passport.user);
+    exchangeMap.delete(userSocket.session.passport.user);
+    exchangeMap.delete(receiverSocket.session.passport.user);
+    console.log('Aborted talk');
+  }
 
   async function getUser(userId) {
     try {
@@ -161,22 +230,36 @@ if (config.apiPort) {
 
       socket.on('findBuddy', (data) => {
         console.log("[SOCKET] User " + user.username + " started searching");
-        if (usersSearchingSet.has(socket)) {
+        if (usersSearchingIds.has(user.username)) {
           console.log('[SOCKET] User ' + user.username + ' multiple search ' );
         }
+        usersSearchingIds = usersSearchingIds.add(user.username);
         usersSearchingSet = usersSearchingSet.add(socket);
       });
+
+      socket.on('exchange', (data) => {
+        //TODO: handle exchange
+      });
+
       socket.on('stopFindingBuddy', (data) => {
         console.log('[SOCKET] User ' + user.username + ' stopped searching');
+        usersSearchingIds = usersSearchingIds.remove(user.username);
         usersSearchingSet = usersSearchingSet.remove(socket);
       });
+
       socket.on('newMessage', (data) => {
         console.log('[SOCKET] User ' + user.username + ' sends message to User ' + data.username);
         let receiver = connectionMap.get(user.username);
         receiver.emit("newMessage", data.message);
       });
-      socket.on('1', () => {
+
+      socket.on('disconnect', () => {
         console.log('[SOCKET] ' + user.username + ' disconnected from ws');
+        usersSearchingIds.remove(user.username);
+        usersSearchingSet.remove(socket);
+        if (connectionMap.has(user.username)) {
+          abortTalk(socket, connectionMap.get(user.username));
+        }
         socket.disconnect();
       });
     } catch (err) {
