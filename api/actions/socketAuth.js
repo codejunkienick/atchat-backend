@@ -1,9 +1,8 @@
-import cookieParser from 'cookie-parser';
 import config from '../config';
 import Account from '../models/account';
 import Membership from '../models/membership';
 import jwt from 'jsonwebtoken';
-export function authenticateSocket(token) {
+export default function authenticateSocket(token) {
   return new Promise(async (resolve, reject) => {
       jwt.verify(token, config.secret, async function(err, decoded) {
         console.log(decoded);
