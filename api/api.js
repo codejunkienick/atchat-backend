@@ -8,20 +8,24 @@ import http from 'http';
 import SocketIo from 'socket.io';
 import mongoose from 'mongoose';
 import passport from 'passport';
-import Account from './models/user';
+import Account from './models/account';
+import Membership from './models/membership';
 import routes from './routes/index';
+import authRoutes from './routes/auth';
 import logger from 'morgan';
-import {CronJob} from 'cron';
 import _ from 'lodash';
 import {authenticateSocket} from 'actions/socketAuth';
 import {Strategy as JwtStrategy, ExtractJwt} from 'passport-jwt';
-
-const Immutable = require('immutable');
+import FacebookTokenStrategy from 'passport-facebook-token';
+import ChatActor from 'helpers/ChatActor';
 
 const app = express();
 const MongoStore = require('connect-mongo')(session);
 const server = new http.Server(app);
 const io = new SocketIo(server);
+const chatActor = new ChatActor();
+chatActor.run(); // Run CronJobs
+
 _.each(io.nsps, function(nsp){
   nsp.on('connect', function(socket){
     if (!socket.auth) {
@@ -31,8 +35,9 @@ _.each(io.nsps, function(nsp){
   });
 });
 
+mongoose.Promise = Promise;
 mongoose.connect(config.server.databaseURL);
-export const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, function(err){
+const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, function(err){
   console.log(err || 'connect-mongodb setup ok');
 });
 
@@ -57,7 +62,7 @@ const opts = {
   secretOrKey: config.secret
 };
 passport.use(new JwtStrategy(opts, function(jwt_payload, done) {
-  Account.findOne({username: jwt_payload.username}, function (err, user) {
+  Account.findOne({_id: jwt_payload._id}, function (err, user) {
     if (err) {
       return done(err, false);
     }
@@ -68,6 +73,35 @@ passport.use(new JwtStrategy(opts, function(jwt_payload, done) {
     }
   });
 }));
+passport.use(new FacebookTokenStrategy({
+    clientID: config.facebook.key,
+    clientSecret: config.facebook.secret
+  },
+  async function(accessToken, refreshToken, profile, done) {
+    //check user table for anyone with a facebook ID of profile.id
+    try {
+      console.log(profile);
+      const membershipData = await Membership.findOne({providerUserId: profile.id});
+      if (!membershipData) {
+        const member = new Membership({
+
+        });
+        const account = new Account({
+          displayName: profile.displayName,
+          social: {
+            facebook: profile.id
+          }
+        });
+
+      } else {
+        return done(null, null);
+      }
+    } catch (err) {
+      return done(err);
+    }
+
+    }
+));
 passport.serializeUser(Account.serializeUser());
 passport.deserializeUser(Account.deserializeUser());
 
@@ -82,6 +116,7 @@ app.use( (req, res, next) => {
 });
 
 app.use('/user/', routes);
+app.use('/auth/', authRoutes);
 
 const bufferSize = 100;
 const messageBuffer = new Array(bufferSize);
@@ -97,197 +132,69 @@ if (config.apiPort) {
   });
 
   io.listen(runnable);
-//  io.use(authenticateSocket(sessionStore));
 
-  //
-  let usersSearchingIds = Immutable.Set();
-  let usersSearchingSet = Immutable.Set();
-
-  // Stack of current chats and exchanges to process in Cron Job
-  let currentChats = Immutable.Stack();
-  let exchangeChats = Immutable.Stack();
-
-  // Map username of one user to the socket of the other
-  let connectionMap = new Map();
-  let exchangeMap = new Map();
-
-  // Cron locks
-  let connectionInProgress = false;
-  let disconnectInProgress = false;
-  let endExchageInProgress = false;
-
-  const connectUsersJob = new CronJob('* * * * * *', async function() {
-    if (connectionInProgress || usersSearchingSet.size < 2) return;
-    connectionInProgress = true;
-    let usersSearching = usersSearchingSet.toArray();
-    usersSearching = _.shuffle(usersSearching);
-
-    while (usersSearching.length >= 2) {
-      const socketFirst = usersSearching.pop();
-      const socketSecond = usersSearching.pop();
-      const userFirst = await getUser(socketFirst.session.passport.user);
-      const userSecond = await getUser(socketSecond.session.passport.user);
-
-      if (!socketFirst || !socketSecond || !userFirst || !userSecond) {
-        console.log('[ERR] Internal bug with connecting users' );
-        return;
-      }
-      const syncTime = Date.now();
-      const endTime = new Date(new Date().getTime() + config.chatDuration).getTime();
-      const dataForFirst = {
-        receiver: {
-          displayName: userSecond.displayName,
-          username: userSecond.username,
-        },
-        time: syncTime
-      };
-      const dataForSecond = {
-        receiver: {
-          displayName: userFirst.displayName,
-          username: userFirst.username,
-        },
-        time: syncTime
-      };
-      const talk = {
-        user1: socketFirst,
-        user2: socketSecond,
-        endTime: endTime
-      };
-      currentChats = currentChats.push(talk);
-      connectionMap.set(userFirst.username, socketSecond);
-      connectionMap.set(userSecond.username, socketFirst);
-      console.log('[SOCKET] ' + userFirst.username + ' connected to ' + userSecond.username);
-      socketFirst.emit('startChat', dataForFirst);
-      socketSecond.emit('startChat', dataForSecond);
-    }
-    usersSearchingSet = Immutable.Set(usersSearching);
-    connectionInProgress = false;
-  }, null, false);
-
-  const disconnectUsersJob = new CronJob('* * * * * *', function() {
-    if (!currentChats.first() || currentChats.first() == undefined || disconnectInProgress) return;
-    disconnectInProgress = true;
-    while (true) {
-      const lastTalk = currentChats.first();
-      if (!lastTalk || lastTalk.endTime - new Date().getTime() > 0) {
-        break;
-      }
-
-      const username1 = lastTalk.user1.session.passport.user;
-      const username2 = lastTalk.user2.session.passport.user;
-      if (!connectionMap.has(username1) || !connectionMap.has(username2)) {
-        //This means talk was aborted and we no longer need to process it
-        currentChats = currentChats.pop();
-        continue;
-      }
-      console.log(lastTalk.endTime - new Date().getTime());
-      console.log('[CRON] removing last talk ');
-      console.log('between ' + username1 + " and " + username2);
-      lastTalk.user1.emit('stopTalk');
-      lastTalk.user2.emit('stopTalk');
-      const exchangeTime = new Date(new Date().getTime() + config.exchangeDuration).getTime();
-      const exchageTalk = {
-        exchangeTime: exchangeTime,
-        user1: lastTalk.user1,
-        user2: lastTalk.user2,
-      };
-      exchangeChats.push(exchageTalk);
-      exchangeMap.set(username1, lastTalk.user2);
-      exchangeMap.set(username2, lastTalk.user1);
-
-      connectionMap.delete(username1);
-      connectionMap.delete(username2);
-      currentChats = currentChats.pop();
-
-    }
-    disconnectInProgress = false;
-  }, null, false);
-
-  const endExchageJob = new CronJob('* * * * * *', function() {
-    if (!exchangeChats.first() || exchangeChats.first() == undefined || disconnectInProgress) return;
-    endExchageInProgress = true;
-    while (true) {
-      const lastTalk = exchangeChats.first();
-      if (!lastTalk || lastTalk.exchangeTime - new Date().getTime() > 0) {
-        break;
-      }
-
-      const username1 = lastTalk.user1.session.passport.user;
-      const username2 = lastTalk.user2.session.passport.user;
-      if (!exchangeMap.has(username1) || !exchangeMap.has(username2)) {
-        //This means talk was aborted and we no longer need to process it
-        exchangeChats = exchangeChats.pop();
-        continue;
-      }
-      console.log(lastTalk.endTime - new Date().getTime());
-      lastTalk.user1.emit('stopExchange');
-      lastTalk.user2.emit('stopExchange');
-      exchangeChats.pop();
-
-    }
-    endExchageInProgress = false;
-  }, null, false);
-
-  connectUsersJob.start();
-  disconnectUsersJob.start();
-
-  function abortTalk(userSocket, receiverSocket) {
-    receiverSocket.emit('abortTalk');
-    connectionMap.delete(userSocket.session.passport.user);
-    connectionMap.delete(receiverSocket.session.passport.user);
-    exchangeMap.delete(userSocket.session.passport.user);
-    exchangeMap.delete(receiverSocket.session.passport.user);
-    console.log('Aborted talk');
-  }
-
-  async function getUser(userId) {
-    try {
-      return await Account.findOne({username: userId});
-    } catch (err) {
-      console.log(err);
-    }
-  }
-  function disconnectSocket(socket, err) {
-    console.log('ERR in socket handling', err);
-    socket.emit('speedchat.error', err.toString());
-    socket.disconnect();
-  }
   async function handleUserSocket(socket) {
+    function abortTalk(receiverSocket, msg = "abortTalk", data = {}) {
+      chatActor.terminateChat(socket, receiverSocket);
+      receiverSocket.emit(msg, data);
+    }
     if (!socket.auth) return;
     try {
       const user = socket.user;
-
       socket.on('findBuddy', (data) => {
-        console.log("[SOCKET] User " + user.username + " started searching");
-        if (usersSearchingIds.has(user.username)) {
+        if (chatActor.isUserSearching(socket)) {
           console.log('[SOCKET] User ' + user.username + ' multiple search ' );
+          return;
         }
-        usersSearchingIds = usersSearchingIds.add(user.username);
-        usersSearchingSet = usersSearchingSet.add(socket);
+        console.log("[SOCKET] User " + user.username + " started searching");
+        chatActor.addSearchingUser(socket)
       });
 
+      socket.on('denyExchange', () => {
+        const receiver = chatActor.getChatUser(socket);
+        abortTalk(socket, receiver.socket, "exchangeFailure");
+      });
       socket.on('exchange', (data) => {
-        //TODO: handle exchange
+        const receiver = chatActor.getExchangeUser(socket);
+        if (receiver) {
+          const {status} = receiver;
+          console.log(status + " " + receiver.socket.user.username);
+          switch (status) {
+            case "PENDING":
+                  chatActor.acceptExchange(receiver.socket);
+                  break;
+            case "ACCEPT":
+                  console.log("YAY");
+                  abortTalk(receiver.socket, "exchangeSuccess", receiver.socket.user);
+                  Account.addFriend(user.username, receiver.socket.user.username);
+                  break;
+            default:
+              break;
+          }
+        }
       });
 
       socket.on('stopFindingBuddy', (data) => {
-        console.log('[SOCKET] User ' + user.username + ' stopped searching');
-        usersSearchingIds = usersSearchingIds.remove(user.username);
-        usersSearchingSet = usersSearchingSet.remove(socket);
+        console.log('[SOCKET] User ' + user.username 1+ ' stopped searching');
+        chatActor.removeSearchingUser(socket);
       });
 
       socket.on('newMessage', (data) => {
         console.log('[SOCKET] User ' + user.username + ' sends message to User ' + data.username);
-        let receiver = connectionMap.get(user.username);
+        let receiver = chatActor.getChatUser(socket);
         receiver.emit("newMessage", data.message);
       });
 
       socket.on('disconnect', () => {
         console.log('[SOCKET] ' + user.username + ' disconnected from ws');
-        usersSearchingIds.remove(user.username);
-        usersSearchingSet.remove(socket);
-        if (connectionMap.has(user.username)) {
-          abortTalk(socket, connectionMap.get(user.username));
+        chatActor.removeSearchingUser(socket);
+        const messageReceiver = chatActor.getChatUser(socket);
+        const exchangeReceiver = chatActor.getExchangeUser(socket);
+        if (messageReceiver) {
+          abortTalk(socket, messageReceiver);
+        }
+        if (exchangeReceiver) {
+          abortTalk(socket, exchangeReceiver.socket);
         }
         socket.disconnect();
       });
@@ -297,27 +204,24 @@ if (config.apiPort) {
   }
 
   io.on('connection', function (socket) {
-    socket.on('authenticate', function(data){
-      //check the auth data sent by the client
-      console.log(data);
-      authenticateSocket(data.token, function(err, user){
-        if (!err && user){
-          console.log("Authenticated socket ", socket.id);
-          socket.auth = true;
-          socket.user = user;
-          _.each(io.nsps, function(nsp) {
-            if(_.find(nsp.sockets, {id: socket.id})) {
-              console.log("restoring socket to", nsp.name);
-              nsp.connected[socket.id] = socket;
-              
-              socket.emit('authenticated');
-              handleUserSocket(socket);
-            }
-          });
-        } else {
-          console.log(err);
-        }
-      });
+    socket.on('authenticate', async function(data){
+      try {
+        const user = await authenticateSocket(data.token);
+        console.log("Authenticated socket ", socket.id);
+        socket.auth = true;
+        socket.user = user;
+        _.each(io.nsps, function(nsp) {
+          if(_.find(nsp.sockets, {id: socket.id})) {
+            console.log("restoring socket to", nsp.name);
+            nsp.connected[socket.id] = socket;
+
+            socket.emit('authenticated');
+            handleUserSocket(socket);
+          }
+        });
+      } catch (err) {
+        console.log(err);
+      }
     });
 
     setTimeout(function(){
@@ -331,4 +235,3 @@ if (config.apiPort) {
 } else {
   console.error('==>     ERROR: No PORT environment variable has been specified');
 }
-

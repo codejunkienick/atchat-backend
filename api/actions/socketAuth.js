@@ -1,16 +1,20 @@
 import cookieParser from 'cookie-parser';
 import config from '../config';
-import Account from '../models/user';
+import Account from '../models/account';
+import Membership from '../models/membership';
 import jwt from 'jsonwebtoken';
-export function authenticateSocket(token, callback) {
-  jwt.verify(token, config.secret, function(err, decoded) {
-    console.log(decoded);
-    return Account.findOne({username: decoded.username}, (err, user) => {
-        if (err) {
-          return callback(err, null);
+export function authenticateSocket(token) {
+  return new Promise(async (resolve, reject) => {
+      jwt.verify(token, config.secret, async function(err, decoded) {
+        console.log(decoded);
+        try {
+          const user = await Account.findOne({_id: decoded._id});
+          if (!user) reject();
+          resolve(user);
+        } catch(err) {
+          return reject(err);
         }
-        return callback(null, user);
-    });
-  });
+      });
+  })
 }
 

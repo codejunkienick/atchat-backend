@@ -18,7 +18,22 @@ module.exports = Object.assign({
     databaseURL: 'mongodb://localhost/speedchat'
   },
   chatDuration: 1000*20, //60 sec
-  exchangeDuration: 1000*120,
-  secret: 'superdupersecretkey' // change in production
+  exchangeDuration: 1000*20,
+  secret: 'superdupersecretkey', // change in production
+  vk: {
+    key: 'ShCbhk2r54RBvVTWxp4v'
+  },
+  facebook: {
+    secret: '537e383991d7185928cadf4eeb72c9ce',
+    key: '1571521829833486'
+  },
+  instagram: {
+    key: '9b953660803c4a2291cb61f27a60324b',
+    secret: '436c20f846e94ba78bbce428467facd6'
+  },
+  twitter: {
+    key: 'qzQYml2K1ZrDtrfEhForcZcIm',
+    secret: 'IxDLx9dJGn0XeV7k6W9vqkQkwmmtU2vPUZpspX5QtWUof2898k'
+  }
 
 }, environment);

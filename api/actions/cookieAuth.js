@@ -1,4 +1,4 @@
-import Account from '../models/user';
+import Account from '../models/account';
 import {sessionStore} from '../api';
 export default function authenticateCookie(req, res) {
     console.log(req.signedCookies);

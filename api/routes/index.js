@@ -1,4 +1,5 @@
-import Account from '../models/user';
+import Account from '../models/account';
+import Membership from '../models/membership';
 import express from 'express';
 import passport from 'passport';
 import {sessionStore} from '../api';
@@ -23,8 +24,12 @@ router.post('/signup', function(req, res) {
       return res.status(500).send(err);
     } else {
       passport.authenticate('local', function (err, account) {
-        req.logIn(account, function() {
-        res.status(err ? 500 : 200).send(err ? err : {user: account});
+        req.logIn(user, function() {
+          const token = jwt.sign({_id: user._id}, config.secret);
+          res.status(err ? 500 : 200).send(err ? err : {
+            user,
+            token
+          });
         });
       })(req, res);
     }
@@ -44,7 +49,7 @@ router.post('/login',
         if (err) {
           return res.status(401).send(err);
         }
-        const token = jwt.sign({ username: user.username}, config.secret);
+        const token = jwt.sign({_id: user._id}, config.secret);
         req.session.save(function (err) {
           if (err) {
             console.log(err);
@@ -59,8 +64,7 @@ router.post('/login',
     })(req, res, next)
   });
 
-router.get('/loginCookie', authenticateCookie);
-
+//router.get('/loginCookie', authenticateCookie);
 //router.get('/loginToken', authenticateToken);
 
 router.get('/logout', function (req, res) {
