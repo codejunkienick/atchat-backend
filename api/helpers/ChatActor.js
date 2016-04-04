@@ -41,7 +41,6 @@ export default class ChatActor {
   }
 
   addChat(socket1, socket2, endTime) {
-
     this.currentChats = this.currentChats.push({
       socket1,
       socket2,
