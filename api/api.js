@@ -8,14 +8,12 @@ import cookieParser from 'cookie-parser';
 import _ from 'lodash';
 import SocketIo from 'socket.io';
 import mongoose from 'mongoose';
-import Account from './models/account';
-import Membership from './models/membership';
+import {Membership, Account} from './models';
 import passport from 'passport';
 import {Strategy as JwtStrategy, ExtractJwt} from 'passport-jwt';
 import FacebookTokenStrategy from 'passport-facebook-token';
 import ChatActor from 'helpers/ChatActor';
-import routes from './routes/index';
-import authRoutes from './routes/auth';
+import {userRoutes, authRoutes} from './routes';
 import handleUserSocket from './helpers/ws';
 import authenticateSocket from 'actions/socketAuth';
 import config from './config';
@@ -63,7 +61,7 @@ app.use( (req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
   next();
 });
-app.use('/user/', routes);
+app.use('/user/', userRoutes);
 app.use('/auth/', authRoutes);
 
 passport.use(Account.createStrategy());
