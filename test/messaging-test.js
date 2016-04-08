@@ -7,12 +7,12 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 
 const expect = chai.expect;
+chai.should();
 const user1 = {username: "test1", password: "password"};
 const user2 = {username: "test2", password: "password"};
 
 
 describe('Suite of unit tests', function() {
-
   let clientSocket1;
   let clientSocket2;
   let token1;
@@ -83,18 +83,59 @@ describe('Suite of unit tests', function() {
     done();
   });
 
-  describe('First (hopefully useful) test', function() {
+  describe('Messaging test suite', function() {
+    this.timeout(4000);
 
-    it('Doing some things with indexOf()', function(done) {
-      expect([1, 2, 3].indexOf(5)).to.be.equal(-1);
-      expect([1, 2, 3].indexOf(0)).to.be.equal(-1);
-      done();
+    it('Check multiple search err', function(done) {
+      clientSocket1.emit("findBuddy", {locale: 'ru'});
+      clientSocket1.emit("findBuddy", {locale: 'ru'});
+      clientSocket1.emit("findBuddy", {locale: 'ru'});
+
+      clientSocket1.on('chat.error', function (data) {
+        data.should.to.exist;
+        data.error.should.equal('MultipleSearch');
+        done();
+      });
     });
 
-    it('Doing something else with indexOf()', function(done) {
-      expect([1, 2, 3].indexOf(5)).to.be.equal(-1);
-      expect([1, 2, 3].indexOf(0)).to.be.equal(-1);
-      done();
+
+    it('Check no locale err', function(done) {
+      clientSocket1.emit("findBuddy");
+
+      clientSocket1.on('chat.error', function (data) {
+        data.should.to.exist;
+        data.error.should.to.equal('NoLocale');
+        done();
+      });
+    });
+
+    it("Check connecting users", function (done) {
+      clientSocket1.emit("findBuddy", {locale: 'ru'});
+      clientSocket2.emit("findBuddy", {locale: 'ru'});
+
+      clientSocket1.on('startChat', function (data) {
+        data.receiver.username.should.to.equal(user2.username);
+        done();
+      });
+    });
+
+    it("Check connecting users2", function (done) {
+      clientSocket1.emit("findBuddy", {locale: 'ru'});
+      clientSocket2.emit("findBuddy", {locale: 'ru'});
+
+      clientSocket2.on('startChat', function (data) {
+        data.receiver.username.should.to.equal(user1.username);
+        done();
+      });
+    });
+
+    it("Check messaging", function (done) {
+      //TODO: Write tests for messaging between users
+    });
+
+
+    it("Check exchange", function (done) {
+      //TODO: Write tests for messaging between users
     });
 
   });
