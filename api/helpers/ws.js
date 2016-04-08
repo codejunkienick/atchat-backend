@@ -7,8 +7,12 @@ export default async function handleUserSocket(chatActor, socket) {
     try {
       const user = socket.user;
       socket.on('findBuddy', (data) => {
+        if (!data || !data.locale) {
+          socket.emit('chat.error', {error: 'NoLocale', message: 'No locale'});
+          return;
+        }
         if (chatActor.isUserSearching(socket)) {
-          console.log('[SOCKET] User ' + user.username + ' multiple search ');
+          socket.emit('chat.error', {error: 'MultipleSearch', message: 'Multiple search is not allowed'});
           return;
         }
         console.log("[SOCKET] User " + user.username + " started searching");
