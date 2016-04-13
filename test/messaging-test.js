@@ -89,7 +89,6 @@ describe('Suite of unit tests', function() {
     it('Check multiple search err', function(done) {
       clientSocket1.emit("findBuddy", {locale: 'ru'});
       clientSocket1.emit("findBuddy", {locale: 'ru'});
-      clientSocket1.emit("findBuddy", {locale: 'ru'});
 
       clientSocket1.on('chat.error', function (data) {
         data.should.to.exist;
@@ -130,12 +129,28 @@ describe('Suite of unit tests', function() {
     });
 
     it("Check messaging", function (done) {
-      //TODO: Write tests for messaging between users
+      clientSocket1.emit("findBuddy", {locale: 'ru'});
+      clientSocket2.emit("findBuddy", {locale: 'ru'});
+      const testMessage = "Test message";
+      clientSocket2.on('startChat', function (data) {
+        data.receiver.username.should.to.equal(user1.username);
+        clientSocket2.emit('newMessage', {
+          message: testMessage,
+          sender: user2.username,
+          time: new Date()
+        });
+      });
+      clientSocket1.on('newMessage', function (data) {
+        data.message.should.to.equal(testMessage);
+        data.sender.should.to.equal(user2.username);
+        done();
+      });
     });
 
 
     it("Check exchange", function (done) {
       //TODO: Write tests for messaging between users
+      
     });
 
   });
