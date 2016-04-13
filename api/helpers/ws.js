@@ -20,8 +20,8 @@ export default async function handleUserSocket(chatActor, socket) {
       });
 
       socket.on('denyExchange', () => {
-        const receiver = chatActor.getChatUser(socket);
-        abortTalk(socket, receiver.socket, "exchangeFailure");
+        const receiver = chatActor.getExchangeUser(socket);
+        abortTalk(receiver.socket, "exchangeFailure");
       });
       socket.on('exchange', () => {
         const receiver = chatActor.getExchangeUser(socket);

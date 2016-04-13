@@ -1,8 +1,7 @@
 import _ from 'lodash';
-const Immutable = require('immutable');
 import {CronJob} from 'cron';
 import config from '../config';
-
+const Immutable = require('immutable');
 export default class ChatActor {
   constructor(events, options = {}) {
     this.options = {
@@ -33,7 +32,7 @@ export default class ChatActor {
     return this.connectionMap.get(socket.user.username);
   }
   getExchangeUser(socket) {
-    return this.connectionMap.get(socket.user.username);
+    return this.exchangeMap.get(socket.user.username);
   }
 
   isUserSearching(socket) {
@@ -162,11 +161,10 @@ export default class ChatActor {
         const username1 = socket1.user.username;
         const username2 = socket2.user.username;
         if (!this.isChatValid(username1, username2)) {
-
           this.currentChats = this.currentChats.pop();
           continue;
         }
-        console.log("ending chat");
+        console.log("endingchat");
         socket1.emit('endChat');
         socket2.emit('endChat');
         const exchangeTime = new Date(new Date().getTime() + config.exchangeDuration).getTime();
