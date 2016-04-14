@@ -6,10 +6,10 @@ import {Account} from '../api/models';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 chai.should();
-const user1 = {username: "test1", password: "password"};
-const user2 = {username: "test2", password: "password"};
+const user1 = {username: 'test1', password: 'password'};
+const user2 = {username: 'test2', password: 'password'};
 
-if (config.chatDuration > 1000 || config.exchangeDuration > 1000) {
+if (config.chatDuration > 5000 || config.exchangeDuration > 5000) {
   console.error('Chat duration or exchange duration are too big for testing');
 }
 
@@ -20,8 +20,8 @@ describe('Suite of unit tests', function() {
   let token2;
   function removeUsers() {
     return new Promise(function (resolve) {
-      Account.remove({username: user1.username}, function (err) {
-        Account.remove({username: user2.username}, function (err) {
+      Account.remove({username: user1.username}, function(err) {
+        Account.remove({username: user2.username}, function(err2) {
           resolve();
         });
       });
@@ -85,13 +85,13 @@ describe('Suite of unit tests', function() {
   });
 
   describe('Messaging test suite', function() {
-    this.timeout(config.exchangeDuration + config.chatDuration + 6000);
+    this.timeout(config.exchangeDuration + config.chatDuration + 2000);
 
     it('Check multiple search err', function(done) {
-      clientSocket1.emit("findBuddy", {locale: 'ru'});
-      clientSocket1.emit("findBuddy", {locale: 'ru'});
+      clientSocket1.emit('findBuddy', {locale: 'ru'});
+      clientSocket1.emit('findBuddy', {locale: 'ru'});
 
-      clientSocket1.on('chat.error', function (data) {
+      clientSocket1.on('chat.error', function(data) {
         data.should.to.exist;
         data.error.should.equal('MultipleSearch');
         done();
@@ -100,30 +100,30 @@ describe('Suite of unit tests', function() {
 
 
     it('Check no locale err', function(done) {
-      clientSocket1.emit("findBuddy");
+      clientSocket1.emit('findBuddy');
 
-      clientSocket1.on('chat.error', function (data) {
+      clientSocket1.on('chat.error', function(data) {
         data.should.to.exist;
         data.error.should.to.equal('NoLocale');
         done();
       });
     });
 
-    it("Check connecting users", function (done) {
-      clientSocket1.emit("findBuddy", {locale: 'ru'});
-      clientSocket2.emit("findBuddy", {locale: 'ru'});
+    it('Check connecting users', function (done) {
+      clientSocket1.emit('findBuddy', {locale: 'ru'});
+      clientSocket2.emit('findBuddy', {locale: 'ru'});
 
-      clientSocket1.on('startChat', function (data) {
+      clientSocket1.on('startChat', function(data) {
         data.receiver.username.should.to.equal(user2.username);
         done();
       });
     });
 
 
-    it("Check messaging and disconnecting users", function (done) {
-      clientSocket1.emit("findBuddy", {locale: 'ru'});
-      clientSocket2.emit("findBuddy", {locale: 'ru'});
-      const testMessage = "Test message";
+    it('Check messaging and disconnecting users', function(done) {
+      clientSocket1.emit('findBuddy', {locale: 'ru'});
+      clientSocket2.emit('findBuddy', {locale: 'ru'});
+      const testMessage = 'Test message';
       let chatEnded = false;
       clientSocket2.on('startChat', function (data) {
         data.receiver.username.should.to.equal(user1.username);
@@ -137,26 +137,41 @@ describe('Suite of unit tests', function() {
         data.message.should.to.equal(testMessage);
         data.sender.should.to.equal(user2.username);
       });
-      clientSocket1.on('endChat', function () {
+      clientSocket1.on('endChat', function() {
         chatEnded = true;
       });
-      clientSocket1.on('endExchange', function () {
+      clientSocket1.on('endExchange', function() {
         if (!chatEnded) done('Exchange ended without ending chat');
         done();
       })
     });
 
-    it("Expect to deny exchange user info after chat", function (done) {
-      clientSocket1.emit("findBuddy", {locale: 'ru'});
-      clientSocket2.emit("findBuddy", {locale: 'ru'});
-      clientSocket1.on('endChat', function () {
+    it('Expect to deny exchange user info after chat', function(done) {
+      clientSocket1.emit('findBuddy', {locale: 'ru'});
+      clientSocket2.emit('findBuddy', {locale: 'ru'});
+      clientSocket1.on('endChat', function() {
         clientSocket1.emit('denyExchange');
       });
-      clientSocket2.on('exchangeFailure', function () {
+      clientSocket2.on('exchangeFailure', function() {
         done();
       })
     })
 
+    it('Expect to successful exchange user info after chat', function(done) {
+      clientSocket1.emit('findBuddy', {locale: 'ru'});
+      clientSocket2.emit('findBuddy', {locale: 'ru'});
+      clientSocket1.on('endChat', function() {
+        clientSocket1.emit('exchange');
+        clientSocket2.emit('exchange');
+      });
+
+      clientSocket1.on('exchangeSuccess', async function() {
+        const userFromDb = await Account.findOne({username: user1.username}).populate('friends');
+        console.log(userFromDb);
+        userFromDb.friends[0].username.should.be.equal(user2.username);
+        done();
+      });
+    })
   });
 
 });
