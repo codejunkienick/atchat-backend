@@ -2,6 +2,7 @@ import _ from 'lodash';
 import {CronJob} from 'cron';
 import config from '../config';
 const Immutable = require('immutable');
+// TODO: add support for multiple locales
 export default class ChatActor {
   constructor(events, options = {}) {
     this.options = {
@@ -18,7 +19,6 @@ export default class ChatActor {
     this.usersSearchingIds = Immutable.Set();
     this.usersSearchingSet = Immutable.Set();
   }
-
   addSearchingUser(socket) {
     this.usersSearchingIds = this.usersSearchingIds.add(socket.user.username);
     this.usersSearchingSet = this.usersSearchingSet.add(socket);
@@ -27,18 +27,26 @@ export default class ChatActor {
     this.usersSearchingIds = this.usersSearchingIds.remove(socket.user.username);
     this.usersSearchingSet = this.usersSearchingSet.remove(socket);
   }
-
   getChatUser(socket) {
     return this.connectionMap.get(socket.user.username);
   }
   getExchangeUser(socket) {
     return this.exchangeMap.get(socket.user.username);
   }
-
   isUserSearching(socket) {
     return (this.usersSearchingIds.has(socket.user.username));
   }
 
+  /*Chat stage functionality*/
+  isChatAborted(username1, username2) {
+    return (!this.connectionMap.has(username1) || !this.connectionMap.has(username2));
+  }
+  isChatValid(username1, username2) {
+    return (
+    !this.isChatAborted(username1, username2)
+    && this.connectionMap.get(username1).user.username == username2
+    && this.connectionMap.get(username2).user.username == username1)
+  }
   addChat(socket1, socket2, endTime) {
     this.currentChats = this.currentChats.push({
       socket1,
@@ -48,13 +56,13 @@ export default class ChatActor {
     this.connectionMap.set(socket1.user.username, socket2);
     this.connectionMap.set(socket2.user.username, socket1);
   }
-
   endChat(chat) {
     this.connectionMap.delete(chat.socket1.user.username);
     this.connectionMap.delete(chat.socket2.user.username);
     this.currentChats = this.currentChats.pop();
   }
 
+  /*Exchange functionality*/
   addExchange(chat, exchangeTime) {
     const {socket1, socket2} = chat;
     this.exchangeChats = this.exchangeChats.push({
@@ -66,24 +74,11 @@ export default class ChatActor {
     this.exchangeMap.set(socket2.user.username, { status: 'PENDING', socket: socket1 });
     console.log('added exchange');
   }
-
   endExchange(username1, username2) {
     this.exchangeMap.delete(username1);
     this.exchangeMap.delete(username2);
     this.exchangeChats = this.exchangeChats.pop();
   }
-
-
-  isChatAborted(username1, username2) {
-    return (!this.connectionMap.has(username1) || !this.connectionMap.has(username2));
-  }
-  isChatValid(username1, username2) {
-    return (
-    !this.isChatAborted(username1, username2)
-    && this.connectionMap.get(username1).user.username == username2
-    && this.connectionMap.get(username2).user.username == username1)
-  }
-
   isExchangeAborted(username1, username2) {
     return (!this.exchangeMap.has(username1) || !this.exchangeMap.has(username2))
   }
@@ -97,18 +92,23 @@ export default class ChatActor {
     this.exchangeMap.set(receiverSocket.user.username, {status: "ACCEPT", socket: socket});
   }
 
+  // Make any current stage for two sockets invalid to remove it in cron afterwards
   terminateChat(socket1, socket2) {
     this.connectionMap.delete(socket1.user.username);
     this.connectionMap.delete(socket2.user.username);
     this.exchangeMap.delete(socket1.user.username);
     this.exchangeMap.delete(socket2.user.username);
   }
-
-  get connectCronJob() {
-    let connectionInProgress = false;
+  /* Cron jobs for:
+  * - Creating chats between users
+  * - Ending chats
+  * - Ending exchange between users
+  */
+  get startChatCronJob() {
+    let startChatInProgress = false;
     return new CronJob('*/2 * * * * *', () => {
-      if (connectionInProgress || this.usersSearchingSet.size < 2) return;
-      connectionInProgress = true;
+      if (startChatInProgress || this.usersSearchingSet.size < 2) return;
+      startChatInProgress = true;
       let usersSearching = this.usersSearchingSet.toArray();
       usersSearching = _.shuffle(usersSearching);
       while (usersSearching.length >= 2) {
@@ -142,16 +142,16 @@ export default class ChatActor {
         socket2.emit('startChat', dataForSecond);
       }
       this.usersSearchingSet = Immutable.Set(usersSearching);
-      connectionInProgress = false;
+      startChatInProgress = false;
     }, null, false);
   }
 
-  get disconnectCronJob() {
-    let disconnectInProgress = false;
+  get endChatCronJob() {
+    let endChatInProgress = false;
 
     return new CronJob('* * * * * *', () => {
-      if ( !this.currentChats.first() || this.currentChats.first() == undefined || disconnectInProgress) return;
-      disconnectInProgress = true;
+      if ( !this.currentChats.first() || this.currentChats.first() == undefined || endChatInProgress) return;
+      endChatInProgress = true;
       while (true) {
         const chat = this.currentChats.first();
         if (!chat || chat.endTime - new Date().getTime() > 0) {
@@ -172,7 +172,7 @@ export default class ChatActor {
         this.endChat(chat);
         this.addExchange(chat, exchangeTime);
       }
-      disconnectInProgress = false;
+      endChatInProgress = false;
     }, null, false);
   }
 
@@ -205,8 +205,9 @@ export default class ChatActor {
   }
 
   run() {
-    this.connectCronJob.start();
-    this.disconnectCronJob.start();
+    console.log('Running ChatActor cron jobs');
+    this.startChatCronJob.start();
+    this.endChatCronJob.start();
     this.endExchangeCronJob.start();
   }
 }
