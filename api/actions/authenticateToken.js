@@ -9,7 +9,10 @@ export default function authenticateSocket(token) {
       try {
         const user = await Account.findOne({_id: decoded._id});
         if (!user) reject();
-        resolve(user);
+        resolve({
+          _id: user._id,
+          username: user.username
+        });
       } catch (mongoErr) {
         return reject(mongoErr);
       }

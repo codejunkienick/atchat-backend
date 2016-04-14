@@ -93,8 +93,8 @@ export default class ChatActor {
     && this.exchangeMap.get(username1).socket.user.username == username2
     && this.exchangeMap.get(username2).socket.user.username == username1)
   }
-  acceptExchange(receiverSocket) {
-    this.exchangeMap.set(receiverSocket.user.username, {status: "ACCEPT", socket: receiverSocket});
+  acceptExchange(socket, receiverSocket) {
+    this.exchangeMap.set(receiverSocket.user.username, {status: "ACCEPT", socket: socket});
   }
 
   terminateChat(socket1, socket2) {
@@ -161,7 +161,7 @@ export default class ChatActor {
         const username1 = socket1.user.username;
         const username2 = socket2.user.username;
         if (!this.isChatValid(username1, username2)) {
-          this.currentChats = this.currentChats.pop();
+          this.endChat(chat);
           continue;
         }
         console.log("endingchat");
@@ -195,7 +195,7 @@ export default class ChatActor {
           this.exchangeChats = this.exchangeChats.pop();
           continue;
         }
-        console.log(lastExchange.endTime - new Date().getTime());
+        console.log('end exchange');
         socket1.emit('endExchange');
         socket2.emit('endExchange');
         this.endExchange(username1, username2)

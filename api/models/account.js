@@ -23,13 +23,14 @@ Account.statics.addFriend = async function (username, friendName) {
 
     console.log("[CHAT] MAKING FRIENDS BETWEEN " + username + " AND " + friendName);
 
-    console.log(friend);
+
 
     user.friends.push(friend._id);
+    await user.save();
     friend.friends.push(user._id);
+    await friend.save();
 
-    user.save();
-    friend.save();
+    console.log(friend);
 
   } catch (err) {
     console.log(err);

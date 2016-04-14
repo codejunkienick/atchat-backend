@@ -23,7 +23,7 @@ export default async function handleUserSocket(chatActor, socket) {
       const receiver = chatActor.getExchangeUser(socket);
       abortTalk(receiver.socket, 'exchangeFailure');
     });
-    socket.on('exchange', () => {
+    socket.on('exchange', async () => {
       // TODO: Fix exchange ACCEPT
       const receiver = chatActor.getExchangeUser(socket);
       if (receiver) {
@@ -31,13 +31,13 @@ export default async function handleUserSocket(chatActor, socket) {
         console.log(status + ' ' + receiver.socket.user.username);
         switch (status) {
           case 'PENDING':
-            chatActor.acceptExchange(receiver.socket);
+            chatActor.acceptExchange(socket, receiver.socket);
             break;
           case 'ACCEPT':
             console.log('YAY');
+            await Account.addFriend(socket.user.username, receiver.socket.user.username);
             socket.emit('exchangeSuccess');
             receiver.socket.emit('exchangeSuccess');
-            Account.addFriend(user.username, receiver.socket.user.username);
             break;
           default:
             break;
