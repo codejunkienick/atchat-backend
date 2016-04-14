@@ -15,7 +15,7 @@ import FacebookTokenStrategy from 'passport-facebook-token';
 import ChatActor from 'helpers/ChatActor';
 import {userRoutes, authRoutes} from './routes';
 import handleUserSocket from './helpers/ws';
-import authenticateSocket from 'actions/authenticateToken';
+import authenticateToken from 'actions/authenticateToken';
 import config from './config';
 
 const app = express();
@@ -125,13 +125,13 @@ if (config.apiPort) {
   io.on('connection', function (socket) {
     socket.on('authenticate', async function(data) {
       try {
-        const user = await authenticateSocket(data.token);
+        const user = await authenticateToken(data.token);
         console.log('Authenticated socket ' + socket.id);
         socket.auth = true;
         socket.user = user;
         _.each(io.nsps, function(nsp) {
           if (_.find(nsp.sockets, {id: socket.id})) {
-            console.log('restoring socket to ' + nsp.name);
+            //console.log('restoring socket to ' + nsp.name);
             nsp.connected[socket.id] = socket;
             socket.emit('authenticated');
             handleUserSocket(chatActor, socket);
