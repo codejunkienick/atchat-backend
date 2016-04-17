@@ -12,7 +12,6 @@ import {Membership, Account} from './models';
 import passport from 'passport';
 import {Strategy as JwtStrategy, ExtractJwt} from 'passport-jwt';
 import FacebookTokenStrategy from 'passport-facebook-token';
-import ChatActor from 'helpers/ChatActor';
 import {userRoutes, authRoutes} from './routes';
 import handleUserSocket from './helpers/ws';
 import authenticateToken from 'actions/authenticateToken';
@@ -21,8 +20,7 @@ const app = express();
 const MongoStore = require('connect-mongo')(session);
 const server = new http.Server(app);
 const io = new SocketIo(server);
-const chatActor = new ChatActor();
-chatActor.run(); // Run CronJobs
+
 
 _.each(io.nsps, function(nsp) {
   nsp.on('connect', function(socket) {
@@ -133,7 +131,7 @@ if (config.apiPort) {
             //console.log('restoring socket to ' + nsp.name);
             nsp.connected[socket.id] = socket;
             socket.emit('authenticated');
-            handleUserSocket(chatActor, socket);
+            handleUserSocket(socket);
           }
         });
       } catch (err) {

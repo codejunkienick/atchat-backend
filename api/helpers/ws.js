@@ -1,6 +1,39 @@
 import Account from '../models/account';
-// TODO: Remove chatActor from function params
-export default async function handleUserSocket(chatActor, socket) {
+import ChatActor from 'helpers/ChatActor';
+const chatActor = new ChatActor({
+  onStartChat: (socket1, socket2) => {
+    const syncTime = Date.now();
+    const dataForFirst = {
+      receiver: {
+        displayName: socket2.user.displayName,
+        username: socket2.user.username,
+      },
+      time: syncTime
+    };
+    const dataForSecond = {
+      receiver: {
+        displayName: socket1.user.displayName,
+        username: socket1.user.username,
+      },
+      time: syncTime
+    };
+    console.log("starting chat");
+    socket1.emit('startChat', dataForFirst);
+    socket2.emit('startChat', dataForSecond);
+  },
+  onEndChat: (socket1, socket2) => {
+    console.log("endingchat");
+    socket1.emit('endChat');
+    socket2.emit('endChat');
+  },
+  onEndExchange: (socket1, socket2) => {
+    console.log('end exchange');
+    socket1.emit('endExchange');
+    socket2.emit('endExchange');
+  }
+});
+chatActor.run(); // Run CronJobs
+export default async function handleUserSocket(socket) {
   function abortTalk(receiverSocket, msg = 'abortTalk', data = {}) {
     chatActor.terminateChat(socket, receiverSocket);
     receiverSocket.emit(msg, data);

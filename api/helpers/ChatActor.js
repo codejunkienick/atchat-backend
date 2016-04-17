@@ -4,11 +4,17 @@ import config from '../config';
 const Immutable = require('immutable');
 // TODO: add support for multiple locales
 export default class ChatActor {
-  constructor(events, options = {}) {
+  constructor(handlers, options = {}) {
     this.options = {
-      connectUsersCron: (options.connectUsersCron) ? options.connectUsersCron : '* * * * *',
-      disconnectUsersCron: (options.disconnectUsersCron) ? options.disconnectUsersCron : '* * * * *',
-      endExchangeCron: (options.disconnectUsersCron) ? options.endExchangeCron : '* * * * *'
+      startChatCronTime: (options.startChatCronTime) ? options.startChatCronTime : '* * * * * *',
+      endChatCronTime: (options.endChatCronTime) ? options.endChatCronTime : '* * * * * *',
+      endExchangeCronTime: (options.endChatCronTime) ? options.endExchangeCronTime : '* * * * * *'
+    };
+
+    this.handlers = {
+      onStartChat: handlers.onStartChat,
+      onEndChat: handlers.onEndChat,
+      onEndExchange: handlers.onEndExchange
     };
     this.currentChats = Immutable.Stack();
     this.exchangeChats = Immutable.Stack();
@@ -47,7 +53,8 @@ export default class ChatActor {
     && this.connectionMap.get(username1).user.username == username2
     && this.connectionMap.get(username2).user.username == username1)
   }
-  addChat(socket1, socket2, endTime) {
+  addChat(socket1, socket2) {
+    const endTime = new Date(new Date().getTime() + config.chatDuration).getTime();
     this.currentChats = this.currentChats.push({
       socket1,
       socket2,
@@ -63,8 +70,8 @@ export default class ChatActor {
   }
 
   /*Exchange functionality*/
-  addExchange(chat, exchangeTime) {
-    const {socket1, socket2} = chat;
+  addExchange(socket1, socket2) {
+    const exchangeTime = new Date(new Date().getTime() + config.exchangeDuration).getTime();
     this.exchangeChats = this.exchangeChats.push({
       exchangeTime,
       socket1,
@@ -106,7 +113,7 @@ export default class ChatActor {
   */
   get startChatCronJob() {
     let startChatInProgress = false;
-    return new CronJob('*/2 * * * * *', () => {
+    return new CronJob(this.options.startChatCronTime, () => {
       if (startChatInProgress || this.usersSearchingSet.size < 2) return;
       startChatInProgress = true;
       let usersSearching = this.usersSearchingSet.toArray();
@@ -114,32 +121,12 @@ export default class ChatActor {
       while (usersSearching.length >= 2) {
         const socket1 = usersSearching.pop();
         const socket2 = usersSearching.pop();
-        const userFirst = socket1.user;
-        const userSecond = socket2.user;
-
-        if (!socket1 || !socket2 || !userFirst || !userSecond) {
+        if (!socket1 || !socket2) {
           console.log('[ERR] Internal bug with connecting users' );
           return;
         }
-        const syncTime = Date.now();
-        const endTime = new Date(new Date().getTime() + config.chatDuration).getTime();
-        const dataForFirst = {
-          receiver: {
-            displayName: userSecond.displayName,
-            username: userSecond.username,
-          },
-          time: syncTime
-        };
-        const dataForSecond = {
-          receiver: {
-            displayName: userFirst.displayName,
-            username: userFirst.username,
-          },
-          time: syncTime
-        };
-        this.addChat(socket1, socket2, endTime);
-        socket1.emit('startChat', dataForFirst);
-        socket2.emit('startChat', dataForSecond);
+        this.handlers.onStartChat(socket1, socket2);
+        this.addChat(socket1, socket2);
       }
       this.usersSearchingSet = Immutable.Set(usersSearching);
       startChatInProgress = false;
@@ -149,7 +136,7 @@ export default class ChatActor {
   get endChatCronJob() {
     let endChatInProgress = false;
 
-    return new CronJob('* * * * * *', () => {
+    return new CronJob(this.options.endChatCronTime, () => {
       if ( !this.currentChats.first() || this.currentChats.first() == undefined || endChatInProgress) return;
       endChatInProgress = true;
       while (true) {
@@ -164,13 +151,9 @@ export default class ChatActor {
           this.endChat(chat);
           continue;
         }
-        console.log("endingchat");
-        socket1.emit('endChat');
-        socket2.emit('endChat');
-        const exchangeTime = new Date(new Date().getTime() + config.exchangeDuration).getTime();
-
+        this.handlers.onEndChat(socket1, socket2);
         this.endChat(chat);
-        this.addExchange(chat, exchangeTime);
+        this.addExchange(socket1, socket2);
       }
       endChatInProgress = false;
     }, null, false);
@@ -178,7 +161,7 @@ export default class ChatActor {
 
   get endExchangeCronJob() {
     let endExchageInProgress = false;
-    return new CronJob('* * * * * *', () => {
+    return new CronJob(this.options.endExchangeCronTime, () => {
       if (!this.exchangeChats.first() || this.exchangeChats.first() == undefined || endExchageInProgress) return;
       endExchageInProgress = true;
       while (true) {
@@ -195,9 +178,7 @@ export default class ChatActor {
           this.exchangeChats = this.exchangeChats.pop();
           continue;
         }
-        console.log('end exchange');
-        socket1.emit('endExchange');
-        socket2.emit('endExchange');
+        this.handlers.onEndExchange(socket1, socket2);
         this.endExchange(username1, username2)
       }
       endExchageInProgress = false;
