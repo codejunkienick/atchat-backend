@@ -1,4 +1,5 @@
 import Account from '../models/account';
+// TODO: Remove chatActor from function params
 export default async function handleUserSocket(chatActor, socket) {
   function abortTalk(receiverSocket, msg = 'abortTalk', data = {}) {
     chatActor.terminateChat(socket, receiverSocket);
@@ -24,7 +25,6 @@ export default async function handleUserSocket(chatActor, socket) {
       abortTalk(receiver.socket, 'exchangeFailure');
     });
     socket.on('exchange', async () => {
-      // TODO: Fix exchange ACCEPT
       const receiver = chatActor.getExchangeUser(socket);
       if (receiver) {
         const {status} = receiver;

@@ -17,8 +17,8 @@ module.exports = Object.assign({
   server: {
     databaseURL: 'mongodb://localhost/speedchat'
   },
-  chatDuration: 1000*60, //60 sec
-  exchangeDuration: 1000*100000,
+  chatDuration: 1000, //60 sec
+  exchangeDuration: 2000,
   secret: 'superdupersecretkey', // change in production
   vk: {
     key: 'ShCbhk2r54RBvVTWxp4v'

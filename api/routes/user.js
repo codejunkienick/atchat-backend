@@ -5,7 +5,8 @@ const router = express.Router();
 const regUsername = /^[a-z0-9_-]{3,16}$/;
 import jwt from 'jsonwebtoken';
 import config from '../config';
-
+// TODO: Add Membership data
+// TODO: Add get user friends
 router.post('/signup', function(req, res) {
   console.log(req.body);
   const user = {
@@ -60,9 +61,6 @@ router.post('/login',
       });
     })(req, res, next)
   });
-
-//router.get('/loginCookie', authenticateCookie);
-//router.get('/loginToken', authenticateToken);
 
 router.get('/logout', function (req, res) {
   req.logout();

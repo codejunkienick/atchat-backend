@@ -1,6 +1,6 @@
 import mongoose, {Schema} from 'mongoose';
 import passportLocalMongoose from 'passport-local-mongoose';
-
+// TODO: Remodel Account database
 const Account = new Schema({
   username: String,
   password: String,
@@ -22,8 +22,6 @@ Account.statics.addFriend = async function (username, friendName) {
     const friend = await this.findOne({username: friendName});
 
     console.log("[CHAT] MAKING FRIENDS BETWEEN " + username + " AND " + friendName);
-
-
 
     user.friends.push(friend._id);
     await user.save();

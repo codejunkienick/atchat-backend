@@ -17,7 +17,6 @@ import {userRoutes, authRoutes} from './routes';
 import handleUserSocket from './helpers/ws';
 import authenticateToken from 'actions/authenticateToken';
 import config from './config';
-
 const app = express();
 const MongoStore = require('connect-mongo')(session);
 const server = new http.Server(app);
