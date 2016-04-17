@@ -154,6 +154,17 @@ describe('Testing messaging', function() {
       })
     });
 
+    it('Expect typingMessage event', function (done) {
+      clientSocket1.emit('findBuddy', {locale: 'ru'});
+      clientSocket2.emit('findBuddy', {locale: 'ru'});
+      clientSocket2.on('startChat', function (data) {
+        clientSocket1.emit('typingMessage');
+      });
+      clientSocket2.on('typingMessage', function () {
+        done();
+      })
+    });
+
     it('Expect to deny exchange user info after chat', function (done) {
       clientSocket1.emit('findBuddy', {locale: 'ru'});
       clientSocket2.emit('findBuddy', {locale: 'ru'});

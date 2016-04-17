@@ -50,6 +50,11 @@ export default async function handleUserSocket(chatActor, socket) {
       chatActor.removeSearchingUser(socket);
     });
 
+    socket.on('typingMessage', () => {
+      const receiver = chatActor.getChatUser(socket);
+      receiver.emit('typingMessage');
+    });
+
     socket.on('newMessage', (msg) => {
       const receiver = chatActor.getChatUser(socket);
       console.log('[SOCKET] User ' + user.username + ' sends message to User ' + receiver.user.username);
