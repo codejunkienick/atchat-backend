@@ -50,6 +50,7 @@ export default async function handleUserSocket(socket) {
         return;
       }
       console.log('[SOCKET] User ' + user.username + ' started searching');
+      socket.locale = data.locale;
       chatActor.addSearchingUser(socket);
     });
 
@@ -84,12 +85,12 @@ export default async function handleUserSocket(socket) {
     });
 
     socket.on('typingMessage', () => {
-      const receiver = chatActor.getChatUser(socket);
+      const receiver = chatActor.getConnectedUser(socket);
       receiver.emit('typingMessage');
     });
 
     socket.on('newMessage', (msg) => {
-      const receiver = chatActor.getChatUser(socket);
+      const receiver = chatActor.getConnectedUser(socket);
       console.log('[SOCKET] User ' + user.username + ' sends message to User ' + receiver.user.username);
       receiver.emit('newMessage', msg);
     });
@@ -97,7 +98,7 @@ export default async function handleUserSocket(socket) {
     socket.on('disconnect', () => {
       console.log('[SOCKET] ' + user.username + ' disconnected from ws');
       chatActor.removeSearchingUser(socket);
-      const messageReceiver = chatActor.getChatUser(socket);
+      const messageReceiver = chatActor.getConnectedUser(socket);
       const exchangeReceiver = chatActor.getExchangeUser(socket);
       if (messageReceiver) {
         abortTalk(messageReceiver);
