@@ -76,6 +76,7 @@
     "map-props": "^1.0.0",
     "mongoose": "^4.4.3",
     "morgan": "^1.6.1",
+    "node-gcm": "^0.14.0",
     "passport": "^0.3.2",
     "passport-facebook-token": "^3.2.0",
     "passport-instagram-token": "^2.3.0",

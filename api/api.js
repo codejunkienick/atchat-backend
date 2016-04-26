@@ -16,6 +16,8 @@ import {userRoutes, authRoutes} from './routes';
 import handleUserSocket from './helpers/ws';
 import authenticateToken from 'actions/authenticateToken';
 import config from './config';
+import {test as testPushNotification} from './helpers/pushClient';
+
 const app = express();
 const MongoStore = require('connect-mongo')(session);
 const server = new http.Server(app);
@@ -134,6 +136,7 @@ if (config.apiPort) {
             handleUserSocket(socket);
           }
         });
+        testPushNotification();
       } catch (err) {
         console.log(err);
       }

@@ -42,15 +42,16 @@ export default async function handleUserSocket(socket) {
     const user = socket.user;
     socket.on('findBuddy', (data) => {
       if (!data || !data.locale) {
-        socket.emit('chat.error', {error: 'NoLocale', message: 'No locale'});
-        return;
+        socket.locale = (socket.user.locale) ? socket.user.locale : 'undefined'
+      } else {
+        socket.locale = data.locale;
       }
       if (chatActor.isUserSearching(socket)) {
         socket.emit('chat.error', {error: 'MultipleSearch', message: 'Multiple search is not allowed'});
         return;
       }
       console.log('[SOCKET] User ' + user.username + ' started searching');
-      socket.locale = data.locale;
+
       chatActor.addSearchingUser(socket);
     });
 

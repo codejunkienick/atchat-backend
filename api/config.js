@@ -20,6 +20,7 @@ module.exports = Object.assign({
   chatDuration: 1000, //60 sec
   exchangeDuration: 2000,
   secret: 'superdupersecretkey', // change in production
+  googleAPIKey: 'AIzaSyCE-dKqeV4j-j5vn8TbsQvOJosmzzsBgCw',
   vk: {
     key: 'ShCbhk2r54RBvVTWxp4v'
   },

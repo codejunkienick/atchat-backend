@@ -5,13 +5,13 @@ const Account = new Schema({
   username: String,
   password: String,
   displayName: String,
+  locale: String,
   social: {
     vk: String,
     facebook: String,
     instagram: String,
     twitter: String
   },
-  facebook: {},
 
   friends: [{type: Schema.Types.ObjectId, ref: "Account"}]
 });

@@ -39,6 +39,7 @@ describe('Testing messaging', function () {
     mongoose.Promise = Promise;
     mongoose.connect(config.server.databaseURL);
     await removeUsers();
+    //TODO: Rewrite account init
     Account.register(new Account({
       username: user1.username,
       displayName: user1.username
@@ -150,15 +151,15 @@ describe('Testing messaging', function () {
     });
 
 
-    it('Check no locale err', function (done) {
-      clientSocket1.emit('findBuddy');
-
-      clientSocket1.on('chat.error', function (data) {
-        data.should.to.exist;
-        data.error.should.to.equal('NoLocale');
-        done();
-      });
-    });
+    // it('Check no locale err', function (done) {
+    //   clientSocket1.emit('findBuddy');
+    //
+    //   clientSocket1.on('chat.error', function (data) {
+    //     data.should.to.exist;
+    //     data.error.should.to.equal('NoLocale');
+    //     done();
+    //   });
+    // });
 
     it('Check connecting users', function (done) {
       clientSocket1.emit('findBuddy', {locale: 'ru'});

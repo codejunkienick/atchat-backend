@@ -39,7 +39,7 @@ export default class ChatActor {
       'ru': Immutable.Set(),
       'en': Immutable.Set(),
       'de': Immutable.Set(),
-      'unknown': Immutable.Set()
+      'undefined': Immutable.Set()
     });
 
   }
@@ -53,19 +53,18 @@ export default class ChatActor {
   }
 
   addSearchingUser(socket) {
-    const locale = socket.locale;
-    console.log(locale);
+    const locale = socket.locale || socket.user.locale || 'undefined';
     this.usersSearchingIds = this.usersSearchingIds.add(socket.user.username);
     this.usersInSearch = this.usersInSearch.set(locale, this.usersInSearch.get(locale).add(socket))
   }
 
   removeSearchingUser(socket) {
-    const locale = socket.locale;
+    const locale = socket.locale || socket.user.locale || 'undefined';
     this.usersSearchingIds = this.usersSearchingIds.remove(socket.user.username);
     this.usersInSearch = this.usersInSearch.set(locale, this.usersInSearch.get(locale).remove(socket))
   }
 
-  getSearchingUserArray(locale = 'unknown') {
+  getSearchingUserArray(locale = 'undefined') {
     return this.usersInSearch.get(locale).toArray();
   }
 
