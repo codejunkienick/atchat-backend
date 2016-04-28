@@ -8,12 +8,15 @@ const Account = new Schema({
   locale: String,
   social: {
     vk: String,
-    facebook: String,
+    facebook: {
+      id: String, 
+      membership: [{type: Schema.Types.ObjectId, ref: 'Membership'}]
+    },
     instagram: String,
     twitter: String
   },
 
-  friends: [{type: Schema.Types.ObjectId, ref: "Account"}]
+  friends: [{type: Schema.Types.ObjectId, ref: 'Account'}]
 });
 
 Account.statics.addFriend = async function (username, friendName) {

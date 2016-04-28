@@ -24,8 +24,8 @@ const server = new http.Server(app);
 const io = new SocketIo(server);
 
 
-_.each(io.nsps, function(nsp) {
-  nsp.on('connect', function(socket) {
+_.each(io.nsps, function (nsp) {
+  nsp.on('connect', function (socket) {
     if (!socket.auth) {
       console.log('removing socket from', nsp.name);
       delete nsp.connected[socket.id];
@@ -35,7 +35,7 @@ _.each(io.nsps, function(nsp) {
 
 mongoose.Promise = Promise;
 mongoose.connect(config.server.databaseURL);
-const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, function(err) {
+const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, function (err) {
   console.log(err || 'connect-mongodb setup ok');
 });
 
@@ -50,10 +50,10 @@ app.use(session({
 }));
 app.use(logger('dev'));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }) );
+app.use(bodyParser.urlencoded({extended: true}));
 app.use(passport.initialize());
 app.use(passport.session());
-app.use( (req, res, next) => {
+app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, X-AUTHENTICATION, X-IP, Content-Type, Accept');
   res.header('Access-Control-Allow-Credentials', true);
@@ -64,10 +64,12 @@ app.use('/user/', userRoutes);
 app.use('/auth/', authRoutes);
 
 passport.use(Account.createStrategy());
+passport.serializeUser(Account.serializeUser());
+passport.deserializeUser(Account.deserializeUser());
 passport.use(new JwtStrategy({
   jwtFromRequest: ExtractJwt.fromAuthHeader(),
   secretOrKey: config.secret
-}, function(jwt_payload, done) {
+}, function (jwt_payload, done) {
   Account.findOne({_id: jwt_payload._id}, function (err, user) {
     if (err) {
       return done(err, false);
@@ -83,32 +85,42 @@ passport.use(new FacebookTokenStrategy({
     clientID: config.facebook.key,
     clientSecret: config.facebook.secret
   },
-  async function(accessToken, refreshToken, profile, done) {
+  async function (accessToken, refreshToken, profile, done) {
     //check user table for anyone with a facebook ID of profile.id
     try {
-      console.log(profile);
-      const membershipData = await Membership.findOne({providerUserId: profile.id});
+      //console.log(profile);
+      const membershipData = await Membership.findOne({providerUserId: profile.id, provider: 'facebook'});
       if (!membershipData) {
-        const member = new Membership({
-        });
+
         const account = new Account({
           displayName: profile.displayName,
           social: {
-            facebook: profile.id
+            facebook: {id: profile.id}
           }
         });
-
+        const membership = new Membership({
+          provider: 'facebook',
+          providerUserId: profile.id,
+          accessToken: accessToken,
+          user: account
+        });
+        account.social.facebook.membership = membership;
+        account.save();
+        membership.save();
+        return done(null, account);
       } else {
-        return done(null, null);
+        const user = await Account.findOne({_id: membershipData.user});
+        if (!membershipData.user) {
+          return done(null, false);
+        }
+        return done(null, user);
       }
     } catch (err) {
       return done(err);
     }
 
-    }
+  }
 ));
-passport.serializeUser(Account.serializeUser());
-passport.deserializeUser(Account.deserializeUser());
 
 if (config.apiPort) {
   const runnable = app.listen(config.apiPort, (err) => {
@@ -122,13 +134,13 @@ if (config.apiPort) {
   io.listen(runnable);
 
   io.on('connection', function (socket) {
-    socket.on('authenticate', async function(data) {
+    socket.on('authenticate', async function (data) {
       try {
         const user = await authenticateToken(data.token);
         console.log('Authenticated socket ' + socket.id);
         socket.auth = true;
         socket.user = user;
-        _.each(io.nsps, function(nsp) {
+        _.each(io.nsps, function (nsp) {
           if (_.find(nsp.sockets, {id: socket.id})) {
             //console.log('restoring socket to ' + nsp.name);
             nsp.connected[socket.id] = socket;
@@ -142,7 +154,7 @@ if (config.apiPort) {
       }
     });
 
-    setTimeout(function() {
+    setTimeout(function () {
       // If the socket didn't authenticate, disconnect it
       if (!socket.auth) {
         console.log('Disconnecting socket ' + socket.id);

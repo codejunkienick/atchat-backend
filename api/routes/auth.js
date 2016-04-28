@@ -5,6 +5,17 @@ const router = express.Router();
 import jwt from 'jsonwebtoken';
 import config from '../config';
 
-router.post('/facebook', passport.authenticate('facebook-token'));
+router.post('/facebook',
+  function (req, res, next) {
+    passport.authenticate('facebook-token', {session: false}, (error, user, info) => {
+      const token = jwt.sign({_id: user._id}, config.secret);
+      if (user) {
+        res.status(200).json({user, token});
+      } else {
+        res.send(401);
+      }
+    })(req, res,next);
+  }
+);
 
 export default router;

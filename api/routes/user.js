@@ -43,7 +43,7 @@ router.post('/login',
         console.log(info);
         return res.status(401).json(info);
       }
-      req.logIn(user, function(err) {
+      req.logIn(user, {session: false}, function(err) {
         if (err) {
           return res.status(401).send(err);
         }
