@@ -24,8 +24,8 @@ router.post('/signup', function (req, res) {
     if (err) {
       return res.status(500).send(err);
     } else {
-      passport.authenticate('local', function (err, account) {
-        req.logIn(user, function () {
+      passport.authenticate('local',function (err, account) {
+        req.logIn(user, {session: false}, function () {
           const token = jwt.sign({_id: user._id}, config.secret);
           res.status(err ? 500 : 200).send(err ? err : {
             user,
@@ -39,7 +39,7 @@ router.post('/signup', function (req, res) {
 
 router.post('/login',
   function (req, res, next) {
-    passport.authenticate('local', function (err, user, info) {
+    passport.authenticate('local', {session: false}, function (err, user, info) {
 
       if (err) {
         return res.status(401).send(err);
@@ -66,9 +66,13 @@ router.post('/login',
     })(req, res, next)
   });
 
-router.get('/logout', function (req, res) {
-  req.logout();
-  res.status(200).json({status: 'Successful logout'});
+router.get('/profile', passport.authenticate('jwt', {session: false}), function (req, res) {
+  res.status(200).send({user: req.user});
+});
+
+router.get('/friends', passport.authenticate('jwt', {session: false}), async function (req, res) {
+  const userWithFriends = await req.user.populate('friends').execPopulate();
+  res.status(200).send({friends: userWithFriends.friends});
 });
 
 export default router;
