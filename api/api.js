@@ -61,7 +61,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
   next();
 });
-app.use('/static', express.static( __dirname + '/../public'));
+app.use('/static', express.static(config.projectDir + '/public'));
 
 app.use('/user/', userRoutes);
 app.use('/auth/', authRoutes);

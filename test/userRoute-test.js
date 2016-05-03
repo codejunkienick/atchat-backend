@@ -97,7 +97,49 @@ describe('Testing user route', function () {
           res.body.user.username.should.equal(user1.username);
           done()
         })
-    })
+    });
+
+    it('should update user displayName', function (done) {
+      const newDisplayName = 'John Doe';
+      server
+        .post('/user/profile')
+        .set('Authorization', 'JWT ' + token1)
+        .send({displayName: newDisplayName})
+        .expect(200)
+        .expect("Content-type",/json/)
+        .end(function (err, res) {
+          if (err) return done(err);
+          res.body.user.displayName.should.equal(newDisplayName);
+          done()
+        })
+    });
+
+    it('should upload user avatar and update', function (done) {
+      server
+        .post('/user/profile')
+        .set('Content-Type', 'multipart/form-data')
+        .set('Authorization', 'JWT ' + token1)
+        .attach('avatar', __dirname + '/test_files/avatar.png')
+        .expect(200)
+        .expect("Content-type",/json/)
+        .end(function (err, res) {
+          if (err) return done(err);
+          res.body.user.avatar.should.exist;
+          server
+            .post('/user/profile')
+            .set('Content-Type', 'multipart/form-data')
+            .set('Authorization', 'JWT ' + token1)
+            .attach('avatar', __dirname + '/test_files/avatar.png')
+            .expect(200)
+            .expect("Content-type",/json/)
+            .end(function (err, res) {
+              if (err) return done(err);
+              done()
+              res.body.user.avatar.should.exist;
+            })
+        })
+    });
+
 
     it('should return user friends', function (done) {
       server

@@ -14,6 +14,7 @@ module.exports = Object.assign({
   port: process.env.PORT,
   apiHost: process.env.APIHOST || '127.0.0.1',
   apiPort: process.env.APIPORT || 3001,
+  projectDir: __dirname + '/../',
   server: {
     databaseURL: 'mongodb://localhost/speedchat'
   },

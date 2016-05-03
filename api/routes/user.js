@@ -3,9 +3,25 @@ import express from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import config from '../config';
+import multer from 'multer';
+import path from 'path';
 
 const router = express.Router();
 const regUsername = /^[a-z0-9_-]{3,16}$/;
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, config.projectDir + '/public/avatars/')
+  },
+  filename: function (req, file, cb) {
+    cb(null, req.user._id + path.extname(file.originalname))
+  }
+});
+
+const uploading = multer({
+  storage: storage,
+  limits: {fileSize: 1000000, files:1}
+});
 
 router.post('/signup', function (req, res) {
   console.log(req.body);
@@ -66,7 +82,18 @@ router.post('/login',
     })(req, res, next)
   });
 
-router.get('/profile', passport.authenticate('jwt', {session: false}), function (req, res) {
+router.post('/profile', passport.authenticate('jwt', {session: false}), uploading.single('avatar'), async function (req, res) {
+  const {displayName, locale} = req.body;
+  //TODO: Add validation
+  req.user.displayName = (displayName) ? displayName : req.user.displayName;
+  req.user.avatar = (req.file) ? 'http://' + config.apiHost + ':' + config.apiPort + '/static/avatars/' + req.file.filename : req.user.avatar;
+  req.user.save((err) => {
+    if (err) return res.status(400).send({error: err});
+    res.status(200).send({user: req.user});
+  })
+});
+
+router.get('/profile', passport.authenticate('jwt', {session: false}), uploading.single('avatar'), function (req, res) {
   res.status(200).send({user: req.user});
 });
 
@@ -74,5 +101,7 @@ router.get('/friends', passport.authenticate('jwt', {session: false}), async fun
   const userWithFriends = await req.user.populate('friends').execPopulate();
   res.status(200).send({friends: userWithFriends.friends});
 });
+
+
 
 export default router;

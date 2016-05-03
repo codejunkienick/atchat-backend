@@ -6,6 +6,7 @@ const Account = new Schema({
   password: {type: String},
   displayName: {type: String},
   locale: String,
+  avatar: String,
   social: {
     vk: {
       id: String,
