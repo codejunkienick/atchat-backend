@@ -22,7 +22,8 @@ module.exports = Object.assign({
   secret: 'superdupersecretkey', // change in production
   googleAPIKey: 'AIzaSyCE-dKqeV4j-j5vn8TbsQvOJosmzzsBgCw',
   vk: {
-    key: 'ShCbhk2r54RBvVTWxp4v'
+    clientId: '5329557',
+    secret: 'ShCbhk2r54RBvVTWxp4v'
   },
   facebook: {
     secret: '537e383991d7185928cadf4eeb72c9ce',

@@ -2,18 +2,27 @@ import mongoose, {Schema} from 'mongoose';
 import passportLocalMongoose from 'passport-local-mongoose';
 // TODO: Remodel Account database
 const Account = new Schema({
-  username: String,
-  password: String,
-  displayName: String,
+  username: {type: String, default: 'John Doe'},
+  password: {type: String, required: true},
+  displayName: {type: String, required: true},
   locale: String,
   social: {
-    vk: String,
-    facebook: {
-      id: String, 
-      membership: [{type: Schema.Types.ObjectId, ref: 'Membership'}]
+    vk: {
+      id: String,
+      membership: {type: Schema.Types.ObjectId, ref: 'Membership'}
     },
-    instagram: String,
-    twitter: String
+    facebook: {
+      id: String,
+      membership: {type: Schema.Types.ObjectId, ref: 'Membership'}
+    },
+    instagram: {
+      id: String,
+      membership: {type: Schema.Types.ObjectId, ref: 'Membership'}
+    },
+    twitter: {
+      id: String,
+      membership: {type: Schema.Types.ObjectId, ref: 'Membership'}
+    },
   },
 
   friends: [{type: Schema.Types.ObjectId, ref: 'Account'}]

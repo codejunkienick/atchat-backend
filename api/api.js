@@ -12,6 +12,7 @@ import {Membership, Account} from './models';
 import passport from 'passport';
 import {Strategy as JwtStrategy, ExtractJwt} from 'passport-jwt';
 import FacebookTokenStrategy from 'passport-facebook-token';
+import VkontakteTokenStrategy from 'passport-vkontakte-token';
 import {userRoutes, authRoutes} from './routes';
 import handleUserSocket from './helpers/ws';
 import authenticateToken from 'actions/authenticateToken';
@@ -62,6 +63,11 @@ app.use((req, res, next) => {
 });
 app.use('/user/', userRoutes);
 app.use('/auth/', authRoutes);
+// Log the error
+app.use(function (err, req, res, next) {
+  console.log(err);
+  next(err);
+});
 
 passport.use(Account.createStrategy());
 passport.serializeUser(Account.serializeUser());
@@ -89,7 +95,7 @@ passport.use(new FacebookTokenStrategy({
     //check user table for anyone with a facebook ID of profile.id
     try {
       //console.log(profile);
-      const membershipData = await Membership.findOne({providerUserId: profile.id, provider: 'facebook'});
+      const membershipData = await Membership.findOne({providerUserId: profile.id, provider: profile.provider});
       if (!membershipData) {
 
         const account = new Account({
@@ -99,14 +105,14 @@ passport.use(new FacebookTokenStrategy({
           }
         });
         const membership = new Membership({
-          provider: 'facebook',
+          provider: profile.provider,
           providerUserId: profile.id,
           accessToken: accessToken,
           user: account
         });
         account.social.facebook.membership = membership;
-        account.save();
-        membership.save();
+        await account.save();
+        await membership.save();
         return done(null, account);
       } else {
         const user = await Account.findOne({_id: membershipData.user});
@@ -118,9 +124,51 @@ passport.use(new FacebookTokenStrategy({
     } catch (err) {
       return done(err);
     }
-
   }
 ));
+passport.use(new VkontakteTokenStrategy({
+    clientID: config.vk.clientId,
+    clientSecret: config.vk.secret
+  },
+  async function (accessToken, refreshToken, profile, done) {
+    //check user table for anyone with a facebook ID of profile.id
+    try {
+      const membershipData = await Membership.findOne({providerUserId: profile.id, provider: profile.provider});
+      if (!membershipData) {
+        const account = new Account({
+          displayName: profile.displayName,
+          social: {
+            vk: {id: profile.id}
+          }
+        });
+        const membership = new Membership({
+          provider: profile.provider,
+          providerUserId: profile.id,
+          accessToken: accessToken,
+          user: account
+        });
+        account.social.vk.membership = membership;
+        account.save(function (err) {
+          if (err) console.log(err);
+          membership.save(function (err) {
+            if (err) console.log(err);
+            return done(null, account);
+          });
+        });
+      } else {
+        const user = await Account.findOne({_id: membershipData.user});
+        if (!membershipData.user) {
+          return done(null, false);
+        }
+        return done(null, user);
+      }
+    } catch (err) {
+      console.log(err);
+      return done(err);
+    }
+  }
+));
+
 
 if (config.apiPort) {
   const runnable = app.listen(config.apiPort, (err) => {
