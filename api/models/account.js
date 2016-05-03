@@ -3,8 +3,8 @@ import passportLocalMongoose from 'passport-local-mongoose';
 // TODO: Remodel Account database
 const Account = new Schema({
   username: {type: String, default: 'John Doe'},
-  password: {type: String, required: true},
-  displayName: {type: String, required: true},
+  password: {type: String},
+  displayName: {type: String},
   locale: String,
   social: {
     vk: {

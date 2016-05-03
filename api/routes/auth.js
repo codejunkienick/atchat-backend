@@ -23,7 +23,6 @@ router.post('/vkontakte',
     passport.authenticate('vkontakte-token', {session: false}, (error, user, info) => {
       if (error) next(error);
       const token = jwt.sign({_id: user._id}, config.secret);
-      console.log('TOKEN: ' + token);
       if (user) {
         res.status(200).json({user, token});
       } else {
