@@ -5,7 +5,7 @@ import config from '../api/config';
 import {Account} from '../api/models';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
-import ChatActor from '../api/helpers/ChatActor';
+import ChatActor from '../api/modules/ChatActor';
 chai.should();
 const user1 = {username: 'test1', password: 'Password2'};
 const user2 = {username: 'test2', password: 'Password2'};

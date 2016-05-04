@@ -1,5 +1,4 @@
-import 'babel-polyfill';
-import io from 'socket.io-client';
+import 'babel-polyfill';1
 import chai from 'chai';
 import config from '../api/config';
 import {Account} from '../api/models';
@@ -28,6 +27,13 @@ describe('Testing user route', function () {
     });
   }
 
+  function populateExchanges() {
+    //TODO: Add dummy data to exchanges
+    return new Promise(function (resolve) {
+      resolve();
+    });
+  }
+
   before(async function (done) {
     mongoose.Promise = Promise;
     mongoose.connect(config.server.databaseURL);
@@ -41,6 +47,8 @@ describe('Testing user route', function () {
         username: friend.username,
         displayName: friend.username
       }), friend.password, async function (err, account) {
+        await populateExchanges();
+        //Make friends
         const u = await Account.findOne({username: user1.username});
         u.friends.push(await Account.findOne({username: friend.username}));
         u.save(() => done());
@@ -64,7 +72,7 @@ describe('Testing user route', function () {
   describe('User Route test suite', function () {
     it('should register user', function (done) {
       server
-        .post('/user/signup')
+        .post('/auth/signup')
         .send({...user2, displayName: user2.username})
         .expect(200)
         .end(function (err, res) {
@@ -78,7 +86,7 @@ describe('Testing user route', function () {
     });
     it('should not sign up with incorrect username', function (done) {
       server
-        .post('/user/signup')
+        .post('/auth/signup')
         .send({username: 'Invalid^*(*AS', password: 'passWithDigits1', displayName: user2.username})
         .expect(400)
         .end(function (err, res) {
@@ -87,7 +95,7 @@ describe('Testing user route', function () {
     });
     it('should not sign up with weak password', function (done) {
       server
-        .post('/user/signup')
+        .post('/auth/signup')
         .send({username: 'testWeakPassword', password: 'passWithoutDigits', displayName: user2.username})
         .expect(400)
         .end(function (err, res) {
@@ -96,7 +104,7 @@ describe('Testing user route', function () {
     });
     it('should login user', function (done) {
       server
-        .post('/user/login')
+        .post('/auth/signin')
         .send(user1)
         .expect(200)
         .end(function (err, res) {
@@ -169,6 +177,6 @@ describe('Testing user route', function () {
           done();
         })
     })
-    
+
   });
 });

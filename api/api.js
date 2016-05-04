@@ -12,10 +12,10 @@ import {Account} from './models';
 import passport from 'passport';
 import {FacebookTokenStrategy, VkontakteTokenStrategy, JwtStategy} from './helpers/oAuthStrategies';
 import {userRoutes, authRoutes} from './routes';
-import handleUserSocket from './helpers/ws';
-import authenticateToken from 'actions/authenticateToken';
+import handleUserSocket from './ws';
+import authenticateToken from 'helpers/authenticateToken';
 import config from './config';
-import {test as testPushNotification} from './helpers/pushClient';
+import {test as testPushNotification} from './modules/pushClient';
 
 const app = express();
 const MongoStore = require('connect-mongo')(session);

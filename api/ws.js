@@ -1,5 +1,5 @@
-import Account from '../models/account';
-import ChatActor from 'helpers/ChatActor';
+import Account from 'models/account';
+import ChatActor from 'modules/ChatActor';
 const chatActor = new ChatActor({
   onStartChat: (socket1, socket2) => {
     const syncTime = Date.now();
