@@ -6,10 +6,10 @@ import {Account} from '../api/models';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 chai.should();
-const user1 = {username: 'test1', password: 'password'};
-const user2 = {username: 'test2', password: 'password'};
-const englishMan1 = {username: 'testEN1', password: 'password'};
-const englishMan2 = {username: 'testEN2', password: 'password'};
+const user1 = {username: 'test1', password: 'Password2'};
+const user2 = {username: 'test2', password: 'Password2'};
+const englishMan1 = {username: 'testEN1', password: 'Password2'};
+const englishMan2 = {username: 'testEN2', password: 'Password2'};
 
 describe('Testing messaging', function () {
   let clientSocket1;

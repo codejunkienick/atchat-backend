@@ -8,6 +8,7 @@ import path from 'path';
 
 const router = express.Router();
 const regUsername = /^[a-z0-9_-]{3,16}$/;
+const regPassword = /(?=^.{6,}$)(?=.*\d)(?=.*[!@#$%^&*]*)(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -24,14 +25,16 @@ const uploading = multer({
 });
 
 router.post('/signup', function (req, res) {
-  console.log(req.body);
   const user = {
     displayName: req.body.displayName,
-    username: req.body.username,
+    username: req.body.username.toLowerCase(),
     password: req.body.password,
   };
   if (!user.username.match(regUsername)) {
-    return res.status(400).send("Invalid username");
+    return res.status(400).send({error: "Invalid username"});
+  }
+  if (!user.password.match(regPassword)) {
+    return res.status(400).send({error: "Weak password. Must contain at least 6 character and at least 1 digit, 1 lowercase letter, 1 uppercase letter"});
   }
   Account.register(new Account({
     username: user.username,
@@ -56,7 +59,6 @@ router.post('/signup', function (req, res) {
 router.post('/login',
   function (req, res, next) {
     passport.authenticate('local', {session: false}, function (err, user, info) {
-
       if (err) {
         return res.status(401).send(err);
       }
@@ -68,7 +70,7 @@ router.post('/login',
         if (err) {
           return res.status(401).send(err);
         }
-        const token = jwt.sign({_id: user._id}, config.secret);
+        const token = jwt.sign({_id: user._id}, config.secret); // sign token
         req.session.save(function (err) {
           if (err) {
             return res.status(401).send(err);

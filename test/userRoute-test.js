@@ -10,9 +10,9 @@ import supertest from 'supertest';
 const server = supertest.agent('http://127.0.0.1:3001');
 chai.should();
 
-const user1 = {username: 'test1', password: 'password'};
-const user2 = {username: 'test2', password: 'password'};
-const friend = {username: 'testFriend', password: 'password'};
+const user1 = {username: 'test1', password: 'Password2'};
+const user2 = {username: 'test2', password: 'Password2'};
+const friend = {username: 'testFriend', password: 'Password2'};
 
 describe('Testing user route', function () {
   let token1;
@@ -76,6 +76,24 @@ describe('Testing user route', function () {
           });
         })
     });
+    it('should not sign up with incorrect username', function (done) {
+      server
+        .post('/user/signup')
+        .send({username: 'Invalid^*(*AS', password: 'passWithDigits1', displayName: user2.username})
+        .expect(400)
+        .end(function (err, res) {
+          if (err || res.body.error) return done();
+        })
+    });
+    it('should not sign up with weak password', function (done) {
+      server
+        .post('/user/signup')
+        .send({username: 'testWeakPassword', password: 'passWithoutDigits', displayName: user2.username})
+        .expect(400)
+        .end(function (err, res) {
+          if (err || res.body.error) return done();
+        })
+    });
     it('should login user', function (done) {
       server
         .post('/user/login')
@@ -91,7 +109,7 @@ describe('Testing user route', function () {
         .get('/user/profile')
         .set('Authorization', 'JWT ' + token1)
         .expect(200)
-        .expect("Content-type",/json/)
+        .expect("Content-type", /json/)
         .end(function (err, res) {
           if (err) return done(err);
           res.body.user.username.should.equal(user1.username);
@@ -106,7 +124,7 @@ describe('Testing user route', function () {
         .set('Authorization', 'JWT ' + token1)
         .send({displayName: newDisplayName})
         .expect(200)
-        .expect("Content-type",/json/)
+        .expect("Content-type", /json/)
         .end(function (err, res) {
           if (err) return done(err);
           res.body.user.displayName.should.equal(newDisplayName);
@@ -121,7 +139,7 @@ describe('Testing user route', function () {
         .set('Authorization', 'JWT ' + token1)
         .attach('avatar', __dirname + '/test_files/avatar.png')
         .expect(200)
-        .expect("Content-type",/json/)
+        .expect("Content-type", /json/)
         .end(function (err, res) {
           if (err) return done(err);
           res.body.user.avatar.should.exist;
@@ -131,7 +149,7 @@ describe('Testing user route', function () {
             .set('Authorization', 'JWT ' + token1)
             .attach('avatar', __dirname + '/test_files/avatar.png')
             .expect(200)
-            .expect("Content-type",/json/)
+            .expect("Content-type", /json/)
             .end(function (err, res) {
               if (err) return done(err);
               done()
@@ -139,7 +157,6 @@ describe('Testing user route', function () {
             })
         })
     });
-
 
     it('should return user friends', function (done) {
       server
@@ -152,5 +169,6 @@ describe('Testing user route', function () {
           done();
         })
     })
+    
   });
 });
