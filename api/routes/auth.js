@@ -8,30 +8,32 @@ const router = express.Router();
 const regUsername = /^[a-z0-9_-]{3,16}$/;
 const regPassword = /(?=^.{6,}$)(?=.*\d)(?=.*[!@#$%^&*]*)(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
 
+const siginMiddleware = (req, res, next) => {
+  return (error, user, info) => {
+    if (error) {
+      return res.status(401).send({error: error});
+    }
+    if (!user) {
+      return res.status(401).json(info);
+    }
+    const token = jwt.sign({_id: user._id}, config.secret);
+    res.status(200).json({user, token});
+  };
+};
+
 router.post('/facebook', function (req, res, next) {
-    passport.authenticate('facebook-token', {session: false}, (error, user, info) => {
-      const token = jwt.sign({_id: user._id}, config.secret);
-      if (user) {
-        res.status(200).json({user, token});
-      } else {
-        res.send(401);
-      }
-    })(req, res,next);
+    passport.authenticate('facebook-token', {session: false}, siginMiddleware(req, res,next))(req, res,next);
   }
 );
 
 router.post('/vkontakte', function (req, res, next) {
-    passport.authenticate('vkontakte-token', {session: false}, (error, user, info) => {
-      if (error) next(error);
-      const token = jwt.sign({_id: user._id}, config.secret);
-      if (user) {
-        res.status(200).json({user, token});
-      } else {
-        res.send(401);
-      }
-    })(req, res,next);
+    passport.authenticate('vkontakte-token', {session: false}, siginMiddleware(req, res,next))(req, res, next);
   }
 );
+
+router.post('/signin', function (req, res, next) {
+  passport.authenticate('local', {session: false}, siginMiddleware(req, res,next))(req, res, next)
+});
 
 router.post('/signup', function (req, res) {
   const user = {
@@ -65,31 +67,5 @@ router.post('/signup', function (req, res) {
   });
 });
 
-router.post('/signin', function (req, res, next) {
-  passport.authenticate('local', {session: false}, function (err, user, info) {
-    if (err) {
-      return res.status(401).send(err);
-    }
-    if (!user) {
-      console.log(info);
-      return res.status(401).json(info);
-    }
-    req.logIn(user, {session: false}, function (err) {
-      if (err) {
-        return res.status(401).send(err);
-      }
-      const token = jwt.sign({_id: user._id}, config.secret); // sign token
-      req.session.save(function (err) {
-        if (err) {
-          return res.status(401).send(err);
-        }
-        res.status(200).json({
-          user,
-          token
-        });
-      });
-    });
-  })(req, res, next)
-});
 
 export default router;
