@@ -1,4 +1,4 @@
-export {default as Account} from './account';
-export {default as Membership} from './membership';
-export {default as Exchange} from './exchange';
-export {default as UserReport} from './userReport';
+export Account from './account';
+export Membership from './membership';
+export Exchange from './exchange';
+export UserReport from './userReport';

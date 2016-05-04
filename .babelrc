@@ -1,9 +1,13 @@
 {
   "plugins": [
-  "syntax-async-functions",
-  "transform-regenerator",
-  "typecheck",
+    "syntax-async-functions",
+    "transform-export-extensions",
+    "transform-regenerator",
+    "typecheck",
     "lodash"
   ],
-  "presets": ["es2015", "stage-0"]
+  "presets": [
+    "es2015",
+    "stage-0"
+  ]
 }
