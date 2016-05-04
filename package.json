@@ -1,12 +1,12 @@
 {
-  "name": "speedchat-api",
+  "name": "atchat-api",
   "description": "",
   "author": "Poteryaev Nickita <poteryaevnick@gmail.com> (http://github.com/codejunkienick)",
   "license": "",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://bitbucket.org/anotdev/atchat-api/"
   },
   "homepage": "",
   "keywords": [],
