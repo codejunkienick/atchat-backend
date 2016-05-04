@@ -1,23 +1,22 @@
 {
   "name": "atchat-api",
   "description": "",
-  "author": "Poteryaev Nickita <poteryaevnick@gmail.com> (http://github.com/codejunkienick)",
+  "author": "Poteryaev Nickita <nickpoteryaev@gmail.com> (http://github.com/codejunkienick)",
   "license": "",
   "version": "0.5.0",
   "repository": {
     "type": "git",
     "url": "https://bitbucket.org/anotdev/atchat-api/"
   },
-  "homepage": "",
+  "homepage": "LicenseRef-LICENSE",
   "keywords": [],
   "main": "bin/api.js",
   "scripts": {
     "start-prod-api": "better-npm-run start-prod-api",
     "lint": "eslint -c .eslintrc src api",
     "start-dev-api": "better-npm-run start-dev-api",
-    "test": "karma start",
-    "test-node": "./node_modules/mocha/bin/mocha $(find api -name '*-test.js') --compilers js:babel-core/register",
-    "test-node-watch": "./node_modules/mocha/bin/mocha $(find api -name '*-test.js') --compilers js:babel-core/register --watch"
+    "test": "./node_modules/mocha/bin/mocha $(find api -name '*-test.js') --compilers js:babel-core/register",
+    "test-watch": "./node_modules/mocha/bin/mocha $(find api -name '*-test.js') --compilers js:babel-core/register --watch"
   },
   "betterScripts": {
     "start-prod-api": {
@@ -29,14 +28,6 @@
       }
     },
     "start-dev-api": {
-      "command": "node ./bin/api.js",
-      "env": {
-        "NODE_PATH": "./api",
-        "NODE_ENV": "development",
-        "APIPORT": 3001
-      }
-    },
-    "start-dev-api-2": {
       "command": "node ./bin/api.js",
       "env": {
         "NODE_PATH": "./api",
