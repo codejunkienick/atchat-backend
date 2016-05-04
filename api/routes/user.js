@@ -40,10 +40,21 @@ router.get('/friends', passport.authenticate('jwt', {session: false}), async fun
   res.status(200).send({friends: userWithFriends.friends});
 });
 
-router.get('/exchanges', passport.authenticate('jwt', {session: false}), async function (req, res) {
-  const createdBefore = Date.parse(decodeURIComponent(req.param.date));
-  const exchanges = await Exchange.find((createdBefore) ? {date: {$lte: createdBefore}} : false).limit(10);
-  return res.status(200).send({exchanges});
+router.get('/exchanges', passport.authenticate('jwt', {session: false}), function (req, res) {
+  const date = req.param('date');
+  //TODO: rewrite accepted date format in ISO or UTC not just ms
+  const dateFrom = (date) ? new Date(parseInt(decodeURIComponent(req.param('date')))) : null;
+  let query = {
+    $or: [{user1: req.user._id}, {user2: req.user._id}]
+  };
+  query = (dateFrom) ? {...query, date: {$lte: dateFrom}} : query;
+  //TODO: Populate user that is not user who made a request
+  Exchange.find(query).sort('-date').limit(10).exec((err, exchanges) => {
+    return res.status(200).send({exchanges});
+  });
+
+  //const exchanges = await Exchange.getUserExchanges(req.user._id, createdBefore);
+
 });
 
 export default router;

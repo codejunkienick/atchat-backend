@@ -1,7 +1,7 @@
 import 'babel-polyfill';1
 import chai from 'chai';
 import config from '../api/config';
-import {Account} from '../api/models';
+import {Account, Exchange} from '../api/models';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import supertest from 'supertest';
@@ -21,7 +21,9 @@ describe('Testing user route', function () {
     return new Promise(function (resolve) {
       Account.remove({username: user1.username}, function (err) {
         Account.remove({username: friend.username}, function (err) {
-          resolve();
+          Account.remove({username: user2.username}, function (err) {
+            resolve();
+          });
         });
       });
     });
@@ -29,10 +31,34 @@ describe('Testing user route', function () {
 
   function populateExchanges() {
     //TODO: Add dummy data to exchanges
-    return new Promise(function (resolve) {
-      resolve();
+    return new Promise(async function (resolve) {
+      const u1 = await Account.findOne({username: user1.username});
+      const fr = await Account.findOne({username: friend.username});
+      const ex1 = new Exchange({
+        user1: u1,
+        user2: fr,
+        result: 'SUCCESS',
+        date: Date.parse('March 7, 2014')
+      });
+      const ex2 = new Exchange({
+        user1: fr,
+        user2: u1,
+        result: 'FAILURE',
+        date: Date.parse('March 12, 2015')
+      });
+      const ex3 = new Exchange({
+        user1: u1,
+        user2: fr,
+        result: 'SUCCESS',
+        date: Date.parse('March 7, 2016')
+      });
+      await ex1.save();
+      await ex2.save();
+      await ex3.save();
+      resolve([{_id: ex1._id}, {_id: ex2._id}, {_id: ex3._id}]);
     });
   }
+
 
   before(async function (done) {
     mongoose.Promise = Promise;
@@ -47,7 +73,6 @@ describe('Testing user route', function () {
         username: friend.username,
         displayName: friend.username
       }), friend.password, async function (err, account) {
-        await populateExchanges();
         //Make friends
         const u = await Account.findOne({username: user1.username});
         u.friends.push(await Account.findOne({username: friend.username}));
@@ -177,6 +202,33 @@ describe('Testing user route', function () {
           done();
         })
     })
-
+    it('should return user exchange history',async function (done) {
+      const ids = await populateExchanges();
+      server
+        .get('/user/exchanges')
+        .set('Authorization', 'JWT ' + token1)
+        .expect(200)
+        .end(async function (err, res) {
+          if (err) return done(err);
+          res.body.exchanges.should.exist;
+          res.body.exchanges.length.should.equal(ids.length);
+          await Exchange.remove(ids).exec();
+          done();
+        })
+    })
+    it('should return user exchange history from date',async function (done) {
+      const ids = await populateExchanges();
+      server
+        .get('/user/exchanges' + '?date=' + encodeURIComponent(Date.parse('March 12, 2015')))
+        .set('Authorization', 'JWT ' + token1)
+        .expect(200)
+        .end(async function (err, res) {
+          if (err) return done(err);
+          res.body.exchanges.should.exist;
+          res.body.exchanges.length.should.equal(2);
+          await Exchange.remove(ids).exec();
+          done();
+        })
+    })
   });
 });
