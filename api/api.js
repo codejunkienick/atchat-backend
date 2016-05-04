@@ -8,11 +8,9 @@ import cookieParser from 'cookie-parser';
 import _ from 'lodash';
 import SocketIo from 'socket.io';
 import mongoose from 'mongoose';
-import {Membership, Account} from './models';
+import {Account} from './models';
 import passport from 'passport';
-import {Strategy as JwtStrategy, ExtractJwt} from 'passport-jwt';
-import FacebookTokenStrategy from 'passport-facebook-token';
-import VkontakteTokenStrategy from 'passport-vkontakte-token';
+import {FacebookTokenStrategy, VkontakteTokenStrategy, JwtStategy} from './helpers/oAuthStrategies';
 import {userRoutes, authRoutes} from './routes';
 import handleUserSocket from './helpers/ws';
 import authenticateToken from 'actions/authenticateToken';
@@ -24,7 +22,7 @@ const MongoStore = require('connect-mongo')(session);
 const server = new http.Server(app);
 const io = new SocketIo(server);
 
-
+//Do not send any data to non-authenticated sockets
 _.each(io.nsps, function (nsp) {
   nsp.on('connect', function (socket) {
     if (!socket.auth) {
@@ -34,7 +32,8 @@ _.each(io.nsps, function (nsp) {
   });
 });
 
-mongoose.Promise = Promise;
+//Setup mongoose connection
+mongoose.Promise = Promise; //ES6 promieses
 mongoose.connect(config.server.databaseURL);
 const sessionStore = new MongoStore({mongooseConnection: mongoose.connection}, function (err) {
   console.log(err || 'connect-mongodb setup ok');
@@ -54,6 +53,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(passport.initialize());
 app.use(passport.session());
+//Enable CORS 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, X-AUTHENTICATION, X-IP, Content-Type, Accept');
@@ -63,112 +63,23 @@ app.use((req, res, next) => {
 });
 app.use('/static', express.static(config.projectDir + '/public'));
 
+//Setup routes
 app.use('/user/', userRoutes);
 app.use('/auth/', authRoutes);
-// Log the error
+
+// Log errors
 app.use(function (err, req, res, next) {
   console.log(err);
   next(err);
 });
 
+//Setup passport middleware for authentication
 passport.use(Account.createStrategy());
 passport.serializeUser(Account.serializeUser());
 passport.deserializeUser(Account.deserializeUser());
-passport.use(new JwtStrategy({
-  jwtFromRequest: ExtractJwt.fromAuthHeader(),
-  secretOrKey: config.secret
-}, function (jwt_payload, done) {
-  Account.findOne({_id: jwt_payload._id}, function (err, user) {
-    if (err) {
-      return done(err, false);
-    }
-    if (user) {
-      done(null, user);
-    } else {
-      done(null, false);
-    }
-  });
-}));
-passport.use(new FacebookTokenStrategy({
-    clientID: config.facebook.key,
-    clientSecret: config.facebook.secret
-  },
-  async function (accessToken, refreshToken, profile, done) {
-    //check user table for anyone with a facebook ID of profile.id
-    try {
-      //console.log(profile);
-      const membershipData = await Membership.findOne({providerUserId: profile.id, provider: profile.provider});
-      if (!membershipData) {
-        const account = new Account({
-          displayName: profile.displayName,
-          social: {
-            facebook: {id: profile.id}
-          }
-        });
-        const membership = new Membership({
-          provider: profile.provider,
-          providerUserId: profile.id,
-          accessToken: accessToken,
-          user: account
-        });
-        account.social.facebook.membership = membership;
-        await account.save();
-        await membership.save();
-        return done(null, account);
-      } else {
-        const user = await Account.findOne({_id: membershipData.user});
-        if (!membershipData.user) {
-          return done(null, false);
-        }
-        return done(null, user);
-      }
-    } catch (err) {
-      return done(err);
-    }
-  }
-));
-passport.use(new VkontakteTokenStrategy({
-    clientID: config.vk.clientId,
-    clientSecret: config.vk.secret
-  },
-  async function (accessToken, refreshToken, profile, done) {
-    //check user table for anyone with a facebook ID of profile.id
-    try {
-      const membershipData = await Membership.findOne({providerUserId: profile.id, provider: profile.provider});
-      if (!membershipData) {
-        const account = new Account({
-          displayName: profile.displayName,
-          social: {
-            vk: {id: profile.id}
-          }
-        });
-        const membership = new Membership({
-          provider: profile.provider,
-          providerUserId: profile.id,
-          accessToken: accessToken,
-          user: account
-        });
-        account.social.vk.membership = membership;
-        account.save(function (err) {
-          if (err) console.log(err);
-          membership.save(function (err) {
-            if (err) console.log(err);
-            return done(null, account);
-          });
-        });
-      } else {
-        const user = await Account.findOne({_id: membershipData.user});
-        if (!membershipData.user) {
-          return done(null, false);
-        }
-        return done(null, user);
-      }
-    } catch (err) {
-      console.log(err);
-      return done(err);
-    }
-  }
-));
+passport.use(JwtStategy());
+passport.use(FacebookTokenStrategy());
+passport.use(VkontakteTokenStrategy());
 
 
 if (config.apiPort) {
@@ -189,9 +100,9 @@ if (config.apiPort) {
         console.log('Authenticated socket ' + socket.id);
         socket.auth = true;
         socket.user = user;
+        //Restore socket to receive data from server
         _.each(io.nsps, function (nsp) {
           if (_.find(nsp.sockets, {id: socket.id})) {
-            //console.log('restoring socket to ' + nsp.name);
             nsp.connected[socket.id] = socket;
             socket.emit('authenticated');
             handleUserSocket(socket);
