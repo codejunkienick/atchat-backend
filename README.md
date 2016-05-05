@@ -31,7 +31,12 @@ Running development mode on port 3001
   * Users can rate each other after chat(TBD)
   * Supports user reporting(WIP)
   
-
+## API folder structure
+  * Models &mdash; Mongoose models
+  * Helpers &mdash; Reusable functions
+  * Routes &mdash; Express routers
+  * Modules &mdash; Separate classes that may go to separate npm modules
+  
 ## SocketIO events
 Will write this eventually 
 
