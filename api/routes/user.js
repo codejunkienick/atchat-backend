@@ -41,9 +41,9 @@ router.get('/friends', passport.authenticate('jwt', {session: false}), async fun
 });
 
 router.get('/exchanges', passport.authenticate('jwt', {session: false}), function (req, res) {
-  const date = req.param('date');
+  const date = req.query.date;
   //TODO: rewrite accepted date format in ISO or UTC not just ms
-  const dateFrom = (date) ? new Date(parseInt(decodeURIComponent(req.param('date')))) : null;
+  const dateFrom = (date) ? new Date(parseInt(decodeURIComponent(date))) : null;
   let query = {
     $or: [{user1: req.user._id}, {user2: req.user._id}]
   };
