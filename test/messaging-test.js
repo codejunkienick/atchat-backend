@@ -11,7 +11,7 @@ const user2 = {username: 'test2', password: 'Password2'};
 const englishMan1 = {username: 'testEN1', password: 'Password2'};
 const englishMan2 = {username: 'testEN2', password: 'Password2'};
 
-describe('Testing messaging', function () {
+describe('Socket testing', function () {
   let clientSocket1;
   let clientSocket2;
   let englishManSocket1;

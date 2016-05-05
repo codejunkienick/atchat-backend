@@ -1,4 +1,5 @@
-import 'babel-polyfill';1
+import 'babel-polyfill';
+1
 import chai from 'chai';
 import config from '../api/config';
 import {Account, Exchange} from '../api/models';
@@ -9,18 +10,18 @@ import supertest from 'supertest';
 const server = supertest.agent('http://127.0.0.1:3001');
 chai.should();
 
-const user1 = {username: 'test1', password: 'Password2'};
+const registeredUser = {username: 'test1', password: 'Password2'};
 const user2 = {username: 'test2', password: 'Password2'};
-const friend = {username: 'testFriend', password: 'Password2'};
+const registeredFriend = {username: 'testFriend', password: 'Password2'};
 
-describe('Testing user route', function () {
+describe('Testing user interactions with api', function () {
   let token1;
   let token2;
 
   function removeUsers() {
     return new Promise(function (resolve) {
-      Account.remove({username: user1.username}, function (err) {
-        Account.remove({username: friend.username}, function (err) {
+      Account.remove({username: registeredUser.username}, function (err) {
+        Account.remove({username: registeredFriend.username}, function (err) {
           Account.remove({username: user2.username}, function (err) {
             resolve();
           });
@@ -29,11 +30,28 @@ describe('Testing user route', function () {
     });
   }
 
+  function populateUsers() {
+    return new Promise(function (resolve) {
+      Account.register(new Account({
+        username: registeredUser.username,
+        displayName: registeredUser.username
+      }), registeredUser.password, function (err, account) {
+        token1 = jwt.sign({_id: account._id}, config.secret);
+        Account.register(new Account({
+          username: registeredFriend.username,
+          displayName: registeredFriend.username
+        }), registeredFriend.password, async function (err, account) {
+          resolve();
+        });
+      });
+    })
+  }
+
   function populateExchanges() {
     //TODO: Add dummy data to exchanges
     return new Promise(async function (resolve) {
-      const u1 = await Account.findOne({username: user1.username});
-      const fr = await Account.findOne({username: friend.username});
+      const u1 = await Account.findOne({username: registeredUser.username});
+      const fr = await Account.findOne({username: registeredFriend.username});
       const ex1 = new Exchange({
         user1: u1,
         user2: fr,
@@ -64,21 +82,10 @@ describe('Testing user route', function () {
     mongoose.Promise = Promise;
     mongoose.connect(config.server.databaseURL);
     await removeUsers();
-    Account.register(new Account({
-      username: user1.username,
-      displayName: user1.username
-    }), user1.password, function (err, account) {
-      token1 = jwt.sign({_id: account._id}, config.secret);
-      Account.register(new Account({
-        username: friend.username,
-        displayName: friend.username
-      }), friend.password, async function (err, account) {
-        //Make friends
-        const u = await Account.findOne({username: user1.username});
-        u.friends.push(await Account.findOne({username: friend.username}));
-        u.save(() => done());
-      });
-    });
+    await populateUsers();
+    const u = await Account.findOne({username: registeredUser.username});
+    u.friends.push(await Account.findOne({username: registeredFriend.username}));
+    u.save(() => done());
   });
   after(async function (done) {
     await removeUsers();
@@ -130,7 +137,7 @@ describe('Testing user route', function () {
     it('should login user', function (done) {
       server
         .post('/auth/signin')
-        .send(user1)
+        .send(registeredUser)
         .expect(200)
         .end(function (err, res) {
           if (err) return done(err);
@@ -145,11 +152,10 @@ describe('Testing user route', function () {
         .expect("Content-type", /json/)
         .end(function (err, res) {
           if (err) return done(err);
-          res.body.user.username.should.equal(user1.username);
+          res.body.user.username.should.equal(registeredUser.username);
           done()
         })
     });
-
     it('should update user displayName', function (done) {
       const newDisplayName = 'John Doe';
       server
@@ -164,7 +170,6 @@ describe('Testing user route', function () {
           done()
         })
     });
-
     it('should upload user avatar and update', function (done) {
       server
         .post('/user/profile')
@@ -190,7 +195,6 @@ describe('Testing user route', function () {
             })
         })
     });
-
     it('should return user friends', function (done) {
       server
         .get('/user/friends')
@@ -198,11 +202,11 @@ describe('Testing user route', function () {
         .expect(200)
         .end(function (err, res) {
           if (err) return done(err);
-          res.body.friends[0].username.should.equal(friend.username);
+          res.body.friends[0].username.should.equal(registeredFriend.username);
           done();
         })
-    })
-    it('should return user exchange history',async function (done) {
+    });
+    it('should return user exchange history', async function (done) {
       const ids = await populateExchanges();
       server
         .get('/user/exchanges')
@@ -215,8 +219,8 @@ describe('Testing user route', function () {
           await Exchange.remove(ids).exec();
           done();
         })
-    })
-    it('should return user exchange history from date',async function (done) {
+    });
+    it('should return user exchange history from date', async function (done) {
       const ids = await populateExchanges();
       server
         .get('/user/exchanges' + '?date=' + encodeURIComponent(Date.parse('March 12, 2015')))
@@ -229,6 +233,19 @@ describe('Testing user route', function () {
           await Exchange.remove(ids).exec();
           done();
         })
-    })
+    });
   });
+
+  describe('Testing report route', function () {
+    it('should app report to db', async function (done) {
+      const reported = await Account.findOne({username: registeredFriend.username});
+      const reason = "SPAM";
+      server
+        .post('/report')
+        .set('Authorization', 'JWT ' + token1)
+        .send({reported: reported._id, reason})
+        .expect(200)
+        .end(done)
+    });
+  })
 });

@@ -11,7 +11,7 @@ import mongoose from 'mongoose';
 import {Account} from './models';
 import passport from 'passport';
 import {FacebookTokenStrategy, VkontakteTokenStrategy, JwtStategy} from './helpers/oAuthStrategies';
-import {userRoutes, authRoutes} from './routes';
+import {userRoute, authRoute, reportRoute} from './routes';
 import handleUserSocket from './ws';
 import authenticateToken from 'helpers/authenticateToken';
 import config from './config';
@@ -53,7 +53,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(passport.initialize());
 app.use(passport.session());
-//Enable CORS 
+//Enable CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, X-AUTHENTICATION, X-IP, Content-Type, Accept');
@@ -64,8 +64,9 @@ app.use((req, res, next) => {
 app.use('/static', express.static(config.projectDir + '/public'));
 
 //Setup routes
-app.use('/user/', userRoutes);
-app.use('/auth/', authRoutes);
+app.use('/user/', userRoute);
+app.use('/auth/', authRoute);
+app.use('/report/', reportRoute);
 
 // Log errors
 app.use(function (err, req, res, next) {
