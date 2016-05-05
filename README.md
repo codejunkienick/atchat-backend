@@ -1,8 +1,11 @@
 # Atchat API. 
 Backend implementation for atchat application.
 
+Written with latest ES6/ES6 features.
+
 ### Reqirements
  * MongoDB 3.*
+ * Node 4.*
 ## Instalation
 1. Clone repository
 2.  ```bash
