@@ -2,18 +2,19 @@ import 'babel-polyfill';
 import http from 'http';
 import express from 'express';
 import session from 'express-session';
-import logger from 'morgan';
+import httpLogger from 'morgan';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import _ from 'lodash';
 import SocketIo from 'socket.io';
 import mongoose from 'mongoose';
-import {Account} from './models';
 import passport from 'passport';
-import {FacebookTokenStrategy, VkontakteTokenStrategy, JwtStategy} from './helpers/oAuthStrategies';
+import {Account} from 'models';
+import {FacebookTokenStrategy, VkontakteTokenStrategy, JwtStategy} from 'helpers/oAuthStrategies';
+import authenticateToken from 'helpers/authenticateToken';
 import {userRoute, authRoute, reportRoute} from './routes';
 import handleUserSocket from './ws';
-import authenticateToken from 'helpers/authenticateToken';
+import {logger, middleware as requestMiddleware} from 'helpers/logger';
 import config from './config';
 import {test as testPushNotification} from './modules/pushClient';
 
@@ -48,7 +49,8 @@ app.use(session({
   key: 'usersid',
   cookie: {maxAge: 1200000}
 }));
-app.use(logger('dev'));
+app.use(httpLogger('dev'));
+app.use(requestMiddleware);
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(passport.initialize());
@@ -70,8 +72,10 @@ app.use('/report/', reportRoute);
 
 // Log errors
 app.use(function (err, req, res, next) {
-  console.log(err);
-  next(err);
+  if (err) {
+    logger.error(err);
+    next(err);
+  }
 });
 
 //Setup passport middleware for authentication
@@ -86,10 +90,10 @@ passport.use(VkontakteTokenStrategy());
 if (config.apiPort) {
   const runnable = app.listen(config.apiPort, (err) => {
     if (err) {
-      console.error(err);
+      logger.error(err);
     }
-    console.info('----\n==>  API is running on port %s', config.apiPort);
-    console.info('==>  Send requests to http://%s:%s', config.apiHost, config.apiPort);
+    console.log('----\n==>  API is running on port %s', config.apiPort);
+    console.log('==>  Send requests to http://%s:%s', config.apiHost, config.apiPort);
   });
 
   io.listen(runnable);
@@ -98,7 +102,7 @@ if (config.apiPort) {
     socket.on('authenticate', async function (data) {
       try {
         const user = await authenticateToken(data.token);
-        console.log('Authenticated socket ' + socket.id);
+        logger.debug('Authenticated socket ' + socket.id);
         socket.auth = true;
         socket.user = user;
         //Restore socket to receive data from server
@@ -111,14 +115,14 @@ if (config.apiPort) {
         });
         testPushNotification();
       } catch (err) {
-        console.log(err);
+        logger.error(err);
       }
     });
 
     setTimeout(function () {
       // If the socket didn't authenticate, disconnect it
       if (!socket.auth) {
-        console.log('Disconnecting socket ' + socket.id);
+        logger.debug('Disconnecting socket ' + socket.id);
         socket.disconnect('unauthorized');
       }
     }, 1000);

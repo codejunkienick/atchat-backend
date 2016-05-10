@@ -1,5 +1,6 @@
 import Account from 'models/account';
 import ChatActor from 'modules/ChatActor';
+import {logger} from 'helpers/logger';
 const chatActor = new ChatActor({
   onStartChat: (socket1, socket2) => {
     const syncTime = Date.now();
@@ -17,12 +18,10 @@ const chatActor = new ChatActor({
       },
       time: syncTime
     };
-    console.log("starting chat");
     socket1.emit('startChat', dataForFirst);
     socket2.emit('startChat', dataForSecond);
   },
   onEndChat: (socket1, socket2) => {
-    console.log("endingchat");
     socket1.emit('endChat');
     socket2.emit('endChat');
   },

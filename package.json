@@ -14,7 +14,7 @@
   "scripts": {
     "start-prod-api": "better-npm-run start-prod-api",
     "lint": "eslint -c .eslintrc src api",
-    "start-dev-api": "better-npm-run start-dev-api",
+    "start-dev-api": "better-npm-run start-dev-api | ./node_modules/.bin/bunyan",
     "test": "./node_modules/mocha/bin/mocha $(find api -name '*-test.js') --compilers js:babel-core/register",
     "test-watch": "./node_modules/mocha/bin/mocha $(find api -name '*-test.js') --compilers js:babel-core/register --watch"
   },
@@ -48,6 +48,8 @@
     "babel-preset-stage-0": "^6.5.0",
     "babel-runtime": "^6.5.0",
     "body-parser": "^1.14.1",
+    "bunyan": "^1.8.1",
+    "bunyan-request": "^1.2.0",
     "compression": "^1.6.0",
     "connect-mongo": "^1.1.0",
     "cookie-parser": "^1.4.1",
