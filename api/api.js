@@ -27,7 +27,6 @@ const io = new SocketIo(server);
 _.each(io.nsps, function (nsp) {
   nsp.on('connect', function (socket) {
     if (!socket.auth) {
-      console.log('removing socket from', nsp.name);
       delete nsp.connected[socket.id];
     }
   });

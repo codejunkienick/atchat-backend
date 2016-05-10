@@ -26,7 +26,6 @@ const chatActor = new ChatActor({
     socket2.emit('endChat');
   },
   onEndExchange: (socket1, socket2) => {
-    console.log('end exchange');
     socket1.emit('endExchange');
     socket2.emit('endExchange');
   }
@@ -61,14 +60,11 @@ export default async function handleUserSocket(socket) {
     socket.on('exchange', async () => {
       const receiver = chatActor.getExchangeUser(socket);
       if (receiver) {
-        const {status} = receiver;
-        console.log(status + ' ' + receiver.socket.user.username);
-        switch (status) {
+        switch (receiver.status) {
           case 'PENDING':
             chatActor.acceptExchange(socket, receiver.socket);
             break;
           case 'ACCEPT':
-            console.log('YAY');
             await Account.addFriend(socket.user.username, receiver.socket.user.username);
             socket.emit('exchangeSuccess');
             receiver.socket.emit('exchangeSuccess');
@@ -96,7 +92,6 @@ export default async function handleUserSocket(socket) {
     });
 
     socket.on('disconnect', () => {
-      console.log('[SOCKET] ' + user.username + ' disconnected from ws');
       chatActor.removeSearchingUser(socket);
       const messageReceiver = chatActor.getConnectedUser(socket);
       const exchangeReceiver = chatActor.getExchangeUser(socket);

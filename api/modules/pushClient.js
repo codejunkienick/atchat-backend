@@ -13,7 +13,5 @@ message.addNotification({
 
 export function test() {
   sender.send(message, { topic: '/topics/global' }, function(err, response) {
-    if(err) console.error(err);
-    else    console.log(response);
   });
 }

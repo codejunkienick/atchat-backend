@@ -40,6 +40,25 @@ Running development mode on port 3001
 ## SocketIO events
 Will write this eventually 
 
+### Events emited only by server
+  * startChat
+    - emited data: receiverObject, syncTime
+  * endChat
+  * endExchange
+  * exchangeSuccess
+  * exchangeFailure
+
+### Client events
+  * newMessage
+  * typingMessage
+  * exchange
+  * denyExchange
+    - requested data: locale
+  * findBuddy
+    - requested data: locale
+  * stopFindingBuddy
+    - requested data: none
+
 ## REST API
 ### URL example
 * Get current authenticated user profile:
@@ -48,4 +67,17 @@ Will write this eventually
   * POST http://localhost/user/profile
 * Get current authenticated user friends:
   * GET http://localhost/user/profile
-
+* Send report on user
+  * POST http://localhost/report
+* Register user
+  * POST http://localhost/auth/signup
+* Sign in user. Returns token and user object
+  * POST http://localhost/auth/signin
+* Sign up user with facebook token
+  * POST http://localhost/auth/facebook
+* Sign up user with vkontakte token
+  * POST http://localhost/auth/vkontakte
+* Sign up user with instagram token **WIP**
+  * POST http://localhost/auth/instagram
+* Sign up user with twitter token **WIP**
+  * POST http://localhost/auth/twitter
