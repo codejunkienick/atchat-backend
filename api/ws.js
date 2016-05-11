@@ -76,7 +76,7 @@ export default async function handleUserSocket(socket) {
     });
 
     socket.on('stopFindingBuddy', () => {
-      console.log('[SOCKET] User ' + user.username + ' stopped searching');
+      logger.info('[SOCKET] User ' + user.username + ' stopped searching');
       chatActor.removeSearchingUser(socket);
     });
 
