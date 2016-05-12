@@ -54,13 +54,13 @@ export default class ChatActor {
 
   addSearchingUser(socket) {
     const locale = socket.locale || socket.user.locale || 'undefined';
-    this.usersSearchingIds = this.usersSearchingIds.add(socket.user.username);
+    this.usersSearchingIds = this.usersSearchingIds.add(socket.user._id);
     this.usersInSearch = this.usersInSearch.set(locale, this.usersInSearch.get(locale).add(socket))
   }
 
   removeSearchingUser(socket) {
     const locale = socket.locale || socket.user.locale || 'undefined';
-    this.usersSearchingIds = this.usersSearchingIds.remove(socket.user.username);
+    this.usersSearchingIds = this.usersSearchingIds.remove(socket.user._id);
     this.usersInSearch = this.usersInSearch.set(locale, this.usersInSearch.get(locale).remove(socket))
   }
 
@@ -69,27 +69,27 @@ export default class ChatActor {
   }
 
   getConnectedUser(socket) {
-    return this.connectionMap.get(socket.user.username);
+    return this.connectionMap.get(socket.user._id);
   }
 
   getExchangeUser(socket) {
-    return this.exchangeMap.get(socket.user.username);
+    return this.exchangeMap.get(socket.user._id);
   }
 
   isUserSearching(socket) {
-    return (this.usersSearchingIds.has(socket.user.username));
+    return (this.usersSearchingIds.has(socket.user._id));
   }
 
   /*Chat stage functionality*/
-  isChatAborted(username1, username2) {
-    return (!this.connectionMap.has(username1) || !this.connectionMap.has(username2));
+  isChatAborted(userId1, userId2) {
+    return (!this.connectionMap.has(userId1) || !this.connectionMap.has(userId2));
   }
 
-  isChatValid(username1, username2) {
+  isChatValid(userId1, userId2) {
     return (
-    !this.isChatAborted(username1, username2)
-    && this.connectionMap.get(username1).user.username == username2
-    && this.connectionMap.get(username2).user.username == username1)
+    !this.isChatAborted(userId1, userId2)
+    && this.connectionMap.get(userId1).user._id == userId2
+    && this.connectionMap.get(userId2).user._id == userId1)
   }
   countActiveChats() {
     return this.currentChats.size;
@@ -101,13 +101,13 @@ export default class ChatActor {
       socket2,
       endTime
     });
-    this.connectionMap = this.connectionMap.set(socket1.user.username, socket2);
-    this.connectionMap = this.connectionMap.set(socket2.user.username, socket1);
+    this.connectionMap = this.connectionMap.set(socket1.user._id, socket2);
+    this.connectionMap = this.connectionMap.set(socket2.user._id, socket1);
   }
 
   endChat(chat) {
-    this.connectionMap = this.connectionMap.delete(chat.socket1.user.username);
-    this.connectionMap = this.connectionMap.delete(chat.socket2.user.username);
+    this.connectionMap = this.connectionMap.delete(chat.socket1.user._id);
+    this.connectionMap = this.connectionMap.delete(chat.socket2.user._id);
     this.currentChats = this.currentChats.pop();
   }
 
@@ -119,38 +119,37 @@ export default class ChatActor {
       socket1,
       socket2
     });
-    this.exchangeMap = this.exchangeMap.set(socket1.user.username, {status: 'PENDING', socket: socket2});
-    this.exchangeMap = this.exchangeMap.set(socket2.user.username, {status: 'PENDING', socket: socket1});
-    console.log('added exchange');
+    this.exchangeMap = this.exchangeMap.set(socket1.user._id, {status: 'PENDING', socket: socket2});
+    this.exchangeMap = this.exchangeMap.set(socket2.user._id, {status: 'PENDING', socket: socket1});
   }
 
-  endExchange(username1, username2) {
-    this.exchangeMap.delete(username1);
-    this.exchangeMap.delete(username2);
+  endExchange(userId1, userId2) {
+    this.exchangeMap.delete(userId1);
+    this.exchangeMap.delete(userId2);
     this.exchangeChats = this.exchangeChats.pop();
   }
 
-  isExchangeAborted(username1, username2) {
-    return (!this.exchangeMap.has(username1) || !this.exchangeMap.has(username2))
+  isExchangeAborted(userId1, userId2) {
+    return (!this.exchangeMap.has(userId1) || !this.exchangeMap.has(userId2))
   }
 
-  isExchangeValid(username1, username2) {
+  isExchangeValid(userId1, userId2) {
     return (
-    !this.isExchangeAborted(username1, username2)
-    && this.exchangeMap.get(username1).socket.user.username == username2
-    && this.exchangeMap.get(username2).socket.user.username == username1)
+    !this.isExchangeAborted(userId1, userId2)
+    && this.exchangeMap.get(userId1).socket.user._id == userId2
+    && this.exchangeMap.get(userId2).socket.user._id == userId1)
   }
 
   acceptExchange(socket, receiverSocket) {
-    this.exchangeMap = this.exchangeMap.set(receiverSocket.user.username, {status: "ACCEPT", socket: socket});
+    this.exchangeMap = this.exchangeMap.set(receiverSocket.user._id, {status: "ACCEPT", socket: socket});
   }
 
   // Make any current stage for two sockets invalid to remove it in cron afterwards
   terminateChat(socket1, socket2) {
-    this.connectionMap = this.connectionMap.delete(socket1.user.username);
-    this.connectionMap = this.connectionMap.delete(socket2.user.username);
-    this.exchangeMap = this.exchangeMap.delete(socket1.user.username);
-    this.exchangeMap = this.exchangeMap.delete(socket2.user.username);
+    this.connectionMap = this.connectionMap.delete(socket1.user._id);
+    this.connectionMap = this.connectionMap.delete(socket2.user._id);
+    this.exchangeMap = this.exchangeMap.delete(socket1.user._id);
+    this.exchangeMap = this.exchangeMap.delete(socket2.user._id);
   }
 
   /* Cron jobs for:
@@ -194,9 +193,9 @@ export default class ChatActor {
           break;
         }
         const {socket1, socket2} = chat;
-        const username1 = socket1.user.username;
-        const username2 = socket2.user.username;
-        if (!this.isChatValid(username1, username2)) {
+        const userId1 = socket1.user._id;
+        const userId2 = socket2.user._id;
+        if (!this.isChatValid(userId1, userId2)) {
           this.endChat(chat);
           continue;
         }
@@ -220,15 +219,15 @@ export default class ChatActor {
         }
         const {socket1, socket2} = lastExchange;
 
-        const username1 = socket1.user.username;
-        const username2 = socket2.user.username;
-        if (!this.isExchangeValid(username1, username2)) {
+        const userId1 = socket1.user._id;
+        const userId2 = socket2.user._id;
+        if (!this.isExchangeValid(userId1, userId2)) {
           //This means talk was aborted and we no longer need to process it
           this.exchangeChats = this.exchangeChats.pop();
           continue;
         }
         this.handlers.onEndExchange(socket1, socket2);
-        this.endExchange(username1, username2)
+        this.endExchange(userId1, userId2)
       }
       endExchageInProgress = false;
     }, null, false);
